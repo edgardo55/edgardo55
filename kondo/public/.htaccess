@@ -1,0 +1,6 @@
+# Apache: envia tudo o que não for ficheiro estático para o index.php
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L]
+php_value post_max_size 10M
+php_value upload_max_filesize 10M

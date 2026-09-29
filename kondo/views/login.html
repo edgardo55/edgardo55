@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrar · Kondo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+body{margin:0}
+.auth{min-height:100vh;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}
+.auth-side{background:var(--side);color:var(--side-ink);padding:40px clamp(24px,5vw,64px);display:flex;flex-direction:column;justify-content:space-between;gap:32px;position:relative;overflow:hidden}
+.auth-side>*{position:relative;z-index:1}
+.auth-side::after{content:"";position:absolute;right:-160px;bottom:-160px;width:380px;height:380px;z-index:0;border-radius:50%;border:56px solid var(--side-active);opacity:.7}
+.auth-side h1{font:600 clamp(28px,3.4vw,42px)/1.12 var(--display);letter-spacing:-.025em;color:#fff;margin:0;max-width:16ch;text-wrap:balance}
+.auth-side p{color:var(--side-muted);max-width:44ch;margin:14px 0 0}
+.feat{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:520px;position:relative;z-index:1}
+.feat b{display:block;color:#fff;font:600 14px var(--display);margin-bottom:2px}
+.feat span{font-size:13px;color:var(--side-muted)}
+.auth-main{display:grid;place-items:center;padding:40px 16px}
+.box{width:min(400px,100%);display:flex;flex-direction:column;gap:18px}
+.box h2{font:600 24px/1.2 var(--display);margin:0;letter-spacing:-.02em}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+.seg button{all:unset;cursor:pointer;text-align:center;padding:9px 8px;border-radius:7px;font-weight:500;font-size:14px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.seg button:focus-visible{outline:2px solid var(--accent)}
+.box form{display:flex;flex-direction:column;gap:14px}
+.box .field input{padding:11px 12px;font-size:15px}
+.btn.block{justify-content:center;padding:11px 14px;font-size:15px}
+.msg{border-radius:8px;padding:10px 12px;font-size:14px;background:var(--bad-soft);color:var(--bad)}
+.msg.ok{background:var(--ok-soft);color:var(--ok)}
+.note{font-size:13px;color:var(--muted);margin:0}
+.linkbtn{all:unset;cursor:pointer;color:var(--accent);font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.linkbtn:focus-visible{outline:2px solid var(--accent)}
+@media (max-width:820px){.auth{grid-template-columns:1fr}.auth-side{padding:28px 16px}.feat{display:none}.auth-side::after{display:none}}
+</style>
+</head>
+<body>
+<div class="auth">
+  <aside class="auth-side">
+    <div class="brand"><div class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 21V9l6-4v16M9 21V3l12 5v13M3 21h18M13 10h4M13 14h4M13 18h4"/></svg></div><div><b>Kondo</b><small>Gestão de condomínios</small></div></div>
+    <div><h1 id="sideTitle">O condomínio organizado, do portão à assembleia.</h1><p id="sideText">Quotas, dívidas, despesas, ocorrências, manutenção e comunicação num só lugar, em kwanzas.</p></div>
+    <div class="feat">
+      <div><b>Área administrativa</b><span>Gestão completa para a administração e a comissão de moradores.</span></div>
+      <div><b>Portal do morador</b><span>Cada morador vê a sua conta corrente, avisos e ocorrências.</span></div>
+    </div>
+  </aside>
+  <main class="auth-main">
+    <div class="box">
+      <div class="seg" role="group" aria-label="Tipo de acesso">
+        <button type="button" id="segM" aria-pressed="true">Sou morador</button>
+        <button type="button" id="segA" aria-pressed="false">Sou administrador</button>
+      </div>
+      <div><h2 id="formTitle">Portal do morador</h2><p class="note" id="formSub">Entre com o email e a palavra-passe que recebeu da administração.</p></div>
+
+      <form id="loginForm" novalidate>
+        <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="username" required></div>
+        <div class="field"><label for="senha">Palavra-passe</label><input id="senha" type="password" autocomplete="current-password" required></div>
+        <div class="msg" id="err" role="alert" hidden></div>
+        <button class="btn primary block" type="submit" id="goBtn">Entrar</button>
+        <p class="note"><button type="button" class="linkbtn" id="esqueci">Esqueci-me da palavra-passe</button></p>
+      </form>
+
+      <form id="recForm" hidden novalidate>
+        <p class="note">Indique o email da sua conta. A administração do condomínio recebe o pedido e envia-lhe uma palavra-passe temporária por SMS, WhatsApp ou email.</p>
+        <div class="field"><label for="recEmail">Email</label><input id="recEmail" type="email" autocomplete="username" required></div>
+        <div class="msg" id="err3" role="alert" hidden></div>
+        <button class="btn primary block" type="submit">Pedir nova palavra-passe</button>
+        <p class="note"><button type="button" class="linkbtn" id="voltar">Voltar ao login</button></p>
+      </form>
+
+      <form id="pwForm" hidden novalidate>
+        <div class="msg ok">Por segurança, defina uma palavra-passe nova antes de continuar.</div>
+        <div class="field"><label for="nova">Nova palavra-passe</label><input id="nova" type="password" autocomplete="new-password" minlength="8" required></div>
+        <div class="field"><label for="nova2">Repita a nova palavra-passe</label><input id="nova2" type="password" autocomplete="new-password" minlength="8" required></div>
+        <div class="msg" id="err2" role="alert" hidden></div>
+        <button class="btn primary block" type="submit">Guardar e continuar</button>
+      </form>
+    </div>
+  </main>
+</div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const TXT = {
+    morador: ['Portal do morador', 'Entre com o email e a palavra-passe que recebeu da administração.'],
+    admin: ['Área administrativa', 'Acesso reservado à administração do condomínio.'],
+  };
+  let modo = 'morador', destino = '/', senhaAtual = '';
+  function setModo(m) {
+    modo = m; $('segM').setAttribute('aria-pressed', m === 'morador'); $('segA').setAttribute('aria-pressed', m === 'admin');
+    $('formTitle').textContent = TXT[m][0]; $('formSub').textContent = TXT[m][1];
+  }
+  $('segM').onclick = () => setModo('morador'); $('segA').onclick = () => setModo('admin');
+  const showErr = (el, msg) => { el.textContent = msg; el.hidden = !msg; };
+  $('esqueci').onclick = () => { $('loginForm').hidden = true; $('recForm').hidden = false; $('recEmail').value = $('email').value; $('recEmail').focus(); };
+  $('voltar').onclick = () => { $('recForm').hidden = true; $('loginForm').hidden = false; };
+  $('recForm').addEventListener('submit', async e => {
+    e.preventDefault(); const el = $('err3'); el.classList.remove('ok');
+    if (!$('recEmail').value.trim()) return showErr(el, 'Indique o email.');
+    try { await api('/api/recuperar', { email: $('recEmail').value.trim() }); el.classList.add('ok'); showErr(el, 'Pedido enviado. Se o email tiver conta, a administração vai contactá-lo com uma palavra-passe temporária.'); }
+    catch (err) { showErr(el, err.message); }
+  });
+  async function api(url, body) {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.erro || 'Não foi possível contactar o servidor.');
+    return j;
+  }
+  $('loginForm').addEventListener('submit', async e => {
+    e.preventDefault(); showErr($('err'), '');
+    const email = $('email').value.trim(), senha = $('senha').value;
+    if (!email || !senha) return showErr($('err'), 'Preencha o email e a palavra-passe.');
+    $('goBtn').disabled = true; $('goBtn').textContent = 'A entrar…';
+    try {
+      const j = await api('/api/login', { email, senha });
+      if (j.papel !== modo && j.papel !== 'op') {
+        // A conta decide a área: avisa se a pessoa escolheu o separador errado.
+        sessionStorage.setItem('kondo_aviso', j.papel === 'admin' ? 'A sua conta é de administrador: entrou na área administrativa.' : 'A sua conta é de morador: entrou no portal do morador.');
+      }
+      destino = j.destino;
+      if (j.trocar_senha) { senhaAtual = senha; $('loginForm').hidden = true; $('pwForm').hidden = false; $('nova').focus(); return; }
+      location.href = destino;
+    } catch (err) { showErr($('err'), err.message); $('goBtn').disabled = false; $('goBtn').textContent = 'Entrar'; }
+  });
+  $('pwForm').addEventListener('submit', async e => {
+    e.preventDefault(); showErr($('err2'), '');
+    if ($('nova').value.length < 8) return showErr($('err2'), 'A nova palavra-passe deve ter pelo menos 8 caracteres.');
+    if ($('nova').value !== $('nova2').value) return showErr($('err2'), 'As duas palavras-passe não coincidem.');
+    try { await api('/api/senha', { atual: senhaAtual, nova: $('nova').value }); location.href = destino; }
+    catch (err) { showErr($('err2'), err.message); }
+  });
+})();
+</script>
+</body>
+</html>

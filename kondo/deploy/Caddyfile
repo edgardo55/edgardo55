@@ -1,0 +1,17 @@
+# Configuração do Caddy (HTTPS automático) com PHP-FPM. Copiar para /etc/caddy/Caddyfile
+# Substitua pelo seu domínio e ajuste o socket do PHP-FPM à sua versão.
+app.seudominio.ao {
+	encode gzip
+	root * /opt/kondo/public
+	request_body {
+		max_size 10MB
+	}
+	php_fastcgi unix//run/php/php8.3-fpm.sock {
+		env KONDO_HTTPS 1
+		env KONDO_DEMO 0
+		# Troque pelo seu email: é o login da área Plataforma (dono do SaaS)
+		env KONDO_EMAIL seu.email@dominio.ao
+		env KONDO_DATA /var/lib/kondo
+	}
+	file_server
+}

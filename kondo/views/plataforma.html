@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plataforma · Kondo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+body{margin:0}
+.pbar{background:var(--side);color:var(--side-ink);position:sticky;top:0;z-index:20}
+.pbar-in{max-width:1180px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.pbar .brand{padding:0}
+.tag{font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;background:var(--accent);color:var(--accent-ink);border-radius:4px;padding:2px 6px}
+.pbar .who-top{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--side-muted)}
+.pbar .btn{background:transparent;color:var(--side-ink);border-color:var(--side-active)}
+.ptabs{max-width:1180px;margin:0 auto;padding:0 16px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.ptabs button{all:unset;cursor:pointer;padding:10px 12px;font-size:14px;color:var(--side-muted);border-bottom:2px solid transparent;white-space:nowrap}
+.ptabs button[aria-current="page"]{color:#fff;border-bottom-color:var(--accent)}
+.ptabs button:focus-visible{outline:2px solid var(--accent)}
+.pmain{max-width:1180px;margin:0 auto;padding-block:24px 48px;padding-inline:16px}
+.bar{height:8px;border-radius:4px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;min-width:80px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.bar.full i{background:var(--bad)}
+</style>
+</head>
+<body>
+<header class="pbar">
+  <div class="pbar-in">
+    <div class="brand"><div class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 21V9l6-4v16M9 21V3l12 5v13M3 21h18M13 10h4M13 14h4M13 18h4"/></svg></div><div><b>Kondo <span class="tag">Plataforma</span></b><small>Gestão dos clientes do SaaS</small></div></div>
+    <div class="who-top"><span id="uNome"></span><button class="btn small" id="btnSenha">Palavra-passe</button><button class="btn small" id="btnSair">Sair</button></div>
+  </div>
+  <nav class="ptabs" id="tabs" aria-label="Secções"></nav>
+</header>
+<main class="pmain" id="view"><div class="panel"><p class="empty">A carregar…</p></div></main>
+<div id="modalRoot"></div>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf = new Intl.NumberFormat('pt-PT', {maximumFractionDigits:0});
+const kz = v => nf.format(Math.round(+v || 0)) + ' Kz';
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const fmtMes = m => { if (!m) return '—'; const [y,mm] = m.split('-'); return MESES[+mm-1] + ' ' + y; };
+const fmtDate = s => s ? s.slice(0,10).split('-').reverse().join('/') : '—';
+const curMes = new Date().toISOString().slice(0,7);
+const FPILL = {'Paga':'ok','Em atraso':'bad','Pendente':'warn','Anulada':''};
+let D = null, tab = 'geral', fFiltro = '';
+try { const h = location.hash.slice(1); if (h) tab = h; } catch (e) {}
+
+async function api(method, url, body) {
+  const r = await fetch(url, { method, headers: body ? {'Content-Type':'application/json'} : {}, body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 401) { location.href = '/login'; throw new Error('Sessão terminada.'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || 'Não foi possível contactar o servidor.');
+  return j;
+}
+let toastT;
+function toast(msg) { let el = document.querySelector('.toast'); if (!el) { el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role','status'); document.body.appendChild(el); } el.textContent = msg; clearTimeout(toastT); toastT = setTimeout(() => el.remove(), 2800); }
+function modal(title, inner) {
+  $('modalRoot').innerHTML = `<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><header><h2 id="mt">${esc(title)}</h2><button class="x" type="button" data-close aria-label="Fechar">✕</button></header>${inner}</div></div>`;
+  const f = document.querySelector('#modalRoot input:not([readonly]),#modalRoot select'); if (f) f.focus();
+}
+const closeModal = () => { $('modalRoot').innerHTML = ''; };
+const errBox = '<p class="field full" id="mErr" style="color:var(--bad);margin:0" hidden></p>';
+const showErr = err => { const e2 = $('mErr'); e2.hidden = false; e2.textContent = err.message; };
+
+const TABS = [['geral','Visão geral'],['condominios','Condomínios'],['faturas','Faturas']];
+function render() {
+  $('tabs').innerHTML = TABS.map(([k, l]) => `<button type="button" data-tab="${k}" ${tab===k?'aria-current="page"':''}>${l}</button>`).join('');
+  const cs = D.condominios, fs = D.faturas, v = $('view');
+  const ativos = cs.filter(c => c.estado === 'Ativo');
+  const mrr = ativos.reduce((s, c) => s + c.preco, 0);
+  const atraso = fs.filter(f => f.estado === 'Em atraso');
+  const recebido = fs.filter(f => f.estado === 'Paga' && (f.paga_em || '').startsWith(curMes)).reduce((s, f) => s + f.valor, 0);
+  if (tab === 'geral') {
+    const porPlano = D.planos.map(p => ({...p, n: ativos.filter(c => c.plano === p.nome).length}));
+    v.innerHTML = `<div class="top"><div><h1>Visão geral</h1><p>${cs.length} condomínios clientes · ${cs.reduce((s,c)=>s+c.fracoes,0)} frações geridas no Kondo</p></div><div class="actions"><button class="btn primary" data-novo>Novo condomínio</button></div></div>
+    <div class="kpis">
+      <div class="kpi"><span class="lbl">Receita mensal recorrente</span><span class="val">${kz(mrr)}</span><span class="sub">${ativos.length} assinaturas ativas</span></div>
+      <div class="kpi"><span class="lbl">Recebido em ${fmtMes(curMes)}</span><span class="val">${kz(recebido)}</span><span class="sub">faturas pagas este mês</span></div>
+      <div class="kpi ${atraso.length?'alert':''}"><span class="lbl">Faturas em atraso</span><span class="val">${kz(atraso.reduce((s,f)=>s+f.valor,0))}</span><span class="sub">${atraso.length} fatura${atraso.length===1?'':'s'}</span></div>
+      <div class="kpi ${cs.length-ativos.length?'alert':''}"><span class="lbl">Suspensos</span><span class="val">${cs.length - ativos.length}</span><span class="sub">condomínios sem acesso</span></div>
+    </div>
+    <div class="grid2">
+      <section class="panel"><h2>Clientes que precisam de atenção</h2>
+        ${cs.filter(c => c.emAtraso || c.estado !== 'Ativo' || (c.limite && c.fracoes >= c.limite * .9)).length ? `<ul class="list">${cs.filter(c => c.emAtraso || c.estado !== 'Ativo' || (c.limite && c.fracoes >= c.limite * .9)).map(c => `<li><span><b>${esc(c.nome)}</b><br><span class="meta">${[c.estado !== 'Ativo' ? 'Suspenso' : '', c.emAtraso ? 'Em atraso: ' + kz(c.emAtraso) : '', c.limite && c.fracoes >= c.limite * .9 ? `Perto do limite do plano (${c.fracoes}/${c.limite})` : ''].filter(Boolean).join(' · ')}</span></span><button class="btn small" data-ver="${c.id}">Gerir</button></li>`).join('')}</ul>` : '<p class="empty">Todos os clientes estão em dia.</p>'}</section>
+      <section class="panel"><h2>Assinaturas por plano</h2><ul class="list">${porPlano.map(p => `<li><span><b>${esc(p.nome)}</b><br><span class="meta">${kz(p.preco)}/mês · ${p.limite ? 'até ' + p.limite + ' frações' : 'ilimitado'}</span></span><span class="num">${p.n} · ${kz(p.n * p.preco)}</span></li>`).join('')}</ul></section>
+    </div>`;
+  } else if (tab === 'condominios') {
+    v.innerHTML = `<div class="top"><div><h1>Condomínios</h1><p>Clientes da plataforma, plano, utilização e estado da assinatura.</p></div><div class="actions"><button class="btn primary" data-novo>Novo condomínio</button></div></div>
+    <div class="tablewrap"><table><thead><tr><th>Condomínio</th><th>Plano</th><th>Frações</th><th>Portal</th><th>Última atividade</th><th>Estado</th><th class="num">Em atraso</th><th></th></tr></thead><tbody>
+    ${cs.map(c => `<tr><td><b>${esc(c.nome)}</b><br><span class="dim" style="font-size:12px">${c.nif ? 'NIF ' + esc(c.nif) + ' · ' : ''}cliente desde ${fmtDate(c.criado)}</span></td>
+      <td>${esc(c.plano)}<br><span class="dim" style="font-size:12px">${kz(c.preco)}/mês</span></td>
+      <td><span class="num">${c.fracoes}${c.limite ? ' / ' + c.limite : ''}</span>${c.limite ? `<div class="bar ${c.fracoes >= c.limite ? 'full' : ''}"><i style="width:${Math.min(100, c.fracoes / c.limite * 100)}%"></i></div>` : ''}</td>
+      <td>${c.moradoresComAcesso} moradores</td><td class="dim" style="font-size:13px">${c.ultimaAtividade ? fmtDate(c.ultimaAtividade) : 'Sem atividade'}</td>
+      <td><span class="pill ${c.estado === 'Ativo' ? 'ok' : 'bad'}">${esc(c.estado)}</span></td>
+      <td class="num" style="${c.emAtraso ? 'color:var(--bad)' : ''}">${c.emAtraso ? kz(c.emAtraso) : '—'}</td>
+      <td><button class="btn small" data-ver="${c.id}">Gerir</button></td></tr>`).join('')}
+    </tbody></table></div>`;
+  } else {
+    const lista = fs.filter(f => !fFiltro || f.estado === fFiltro);
+    v.innerHTML = `<div class="top"><div><h1>Faturas</h1><p>Faturação mensal das assinaturas. As faturas vencem no dia 15 do mês.</p></div><div class="actions"><button class="btn primary" data-emitir>Emitir faturas de ${fmtMes(curMes)}</button></div></div>
+    <div class="toolbar"><select class="filter" id="fF" aria-label="Filtrar por estado"><option value="">Todos os estados</option>${['Em atraso','Pendente','Paga','Anulada'].map(x => `<option ${fFiltro===x?'selected':''}>${x}</option>`).join('')}</select><span class="dim" style="font-size:13px">${lista.length} faturas · ${kz(lista.reduce((s,f)=>s+f.valor,0))}</span></div>
+    <div class="tablewrap"><table><thead><tr><th>Período</th><th>Condomínio</th><th>Plano</th><th>Referência</th><th>Vence</th><th>Estado</th><th class="num">Valor</th><th></th></tr></thead><tbody>
+    ${lista.length ? lista.map(f => `<tr><td>${fmtMes(f.periodo)}</td><td><b>${esc(f.condo_nome)}</b></td><td>${esc(f.plano)}</td><td class="mono">${esc(f.referencia)}</td><td class="dim">${fmtDate(f.vence)}</td>
+      <td><span class="pill ${FPILL[f.estado] ?? ''}">${esc(f.estado)}</span>${f.paga_em ? `<br><span class="dim" style="font-size:12px">paga ${fmtDate(f.paga_em)}</span>` : ''}</td><td class="num">${kz(f.valor)}</td>
+      <td><div class="rowacts">${f.estado === 'Paga' || f.estado === 'Anulada' ? `<button class="btn small" data-fat="${f.id}|Pendente">Reabrir</button>` : `<button class="btn small primary" data-fat="${f.id}|Paga">Marcar paga</button><button class="btn small" data-fat="${f.id}|Anulada">Anular</button>`}</div></td></tr>`).join('') : '<tr><td colspan="8" class="empty" style="padding:20px 14px">Sem faturas.</td></tr>'}
+    </tbody></table></div>`;
+    $('fF').addEventListener('change', e => { fFiltro = e.target.value; render(); });
+  }
+}
+
+function credenciais(u, senha, condoNome) {
+  const msg = `Olá ${u.nome},\n\nO ${condoNome} já está no Kondo. Este é o seu acesso de administrador:\n\nEndereço: ${location.origin}/login\nEmail: ${u.email}\nPalavra-passe temporária: ${senha}\n\nNa primeira entrada ser-lhe-á pedido que escolha uma palavra-passe nova.\n\nEquipa Kondo`;
+  modal('Acesso do administrador', `<form onsubmit="return false"><p class="field full" style="margin:0;font-size:14px">A palavra-passe temporária só é mostrada agora. Envie esta mensagem ao administrador do condomínio.</p>
+    <div class="field full"><label for="cbTxt">Mensagem</label><textarea id="cbTxt" class="copybox" rows="11" readonly>${esc(msg)}</textarea></div>
+    <footer><span></span><div><button class="btn" type="button" data-close>Fechar</button><button class="btn primary" type="button" id="cpBtn">Copiar mensagem</button></div></footer></form>`);
+  $('cpBtn').onclick = () => { const ta = $('cbTxt'); const fb = () => { ta.focus(); ta.select(); toast('Texto selecionado. Use Ctrl+C.'); }; try { navigator.clipboard.writeText(ta.value).then(() => toast('Mensagem copiada'), fb); } catch (e) { fb(); } };
+}
+function novoCondominio() {
+  modal('Novo condomínio', `<form id="ncForm">
+    <div class="field full"><label for="nN">Nome do condomínio</label><input id="nN" required placeholder="Ex.: Residencial Kilamba Q12"></div>
+    <div class="field full"><label for="nMo">Morada</label><input id="nMo" placeholder="Bairro, município, província"></div>
+    <div class="field"><label for="nNif">NIF</label><input id="nNif"></div>
+    <div class="field"><label for="nP">Plano</label><select id="nP">${D.planos.map(p => `<option value="${esc(p.nome)}" ${p.nome==='Profissional'?'selected':''}>${esc(p.nome)} · ${kz(p.preco)}/mês</option>`).join('')}</select></div>
+    <div class="field full sec">Administrador do condomínio</div>
+    <div class="field"><label for="nAN">Nome</label><input id="nAN" required></div>
+    <div class="field"><label for="nAE">Email</label><input id="nAE" type="email" required></div>
+    <div class="field full"><label for="nC">Telefone de contacto</label><input id="nC" type="tel" placeholder="+244 9__ ___ ___"></div>
+    ${errBox}<footer><span></span><div><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Criar condomínio</button></div></footer></form>`);
+  $('ncForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    try {
+      const j = await api('POST', '/api/plataforma/condominios', { nome: $('nN').value.trim(), morada: $('nMo').value, nif: $('nNif').value.trim(), plano: $('nP').value, adminNome: $('nAN').value.trim(), adminEmail: $('nAE').value.trim(), contacto: $('nC').value.trim() });
+      await load(); credenciais(j.utilizador, j.senha_temporaria, $('nN') ? $('nN').value : 'condomínio');
+    } catch (err) { showErr(err); }
+  });
+}
+function gerir(id) {
+  const c = D.condominios.find(x => x.id === id); if (!c) return;
+  const fs = D.faturas.filter(f => f.condo_id === id);
+  modal(c.nome, `<form id="gForm">
+    <div class="field"><label for="gP">Plano</label><select id="gP">${D.planos.map(p => `<option value="${esc(p.nome)}" ${p.nome===c.plano?'selected':''}>${esc(p.nome)} · ${kz(p.preco)}/mês</option>`).join('')}</select></div>
+    <div class="field"><label>Estado</label><div style="display:flex;gap:8px;align-items:center"><span class="pill ${c.estado==='Ativo'?'ok':'bad'}">${esc(c.estado)}</span><button class="btn small ${c.estado==='Ativo'?'danger':''}" type="button" id="gE">${c.estado==='Ativo'?'Suspender':'Reativar'}</button></div></div>
+    <p class="field full dim" style="margin:0;font-size:13px">Suspender fecha o portal dos moradores e deixa os administradores só em modo de consulta, até reativar.</p>
+    <div class="field full sec">Administradores</div>
+    <ul class="list field full">${c.admins.map(a => `<li><span><b>${esc(a.nome)}</b><br><span class="meta">${esc(a.email)} · última entrada ${a.ultimo_login ? fmtDate(a.ultimo_login) : 'nunca'}</span></span><button class="btn small" type="button" data-repor="${a.id}">Repor senha</button></li>`).join('')}</ul>
+    <div class="field full sec">Faturas</div>
+    <ul class="list field full">${fs.length ? fs.slice(0,6).map(f => `<li><span>${fmtMes(f.periodo)} · ${esc(f.referencia)}</span><span><span class="pill ${FPILL[f.estado] ?? ''}">${esc(f.estado)}</span> <span class="num">${kz(f.valor)}</span></span></li>`).join('') : '<li class="dim">Sem faturas.</li>'}</ul>
+    ${errBox}<footer><span></span><div><button class="btn" type="button" data-close>Fechar</button><button class="btn primary" type="submit">Guardar plano</button></div></footer></form>`);
+  $('gE').onclick = async () => {
+    try { await api('PATCH', `/api/plataforma/condominios/${id}`, {estado: c.estado === 'Ativo' ? 'Suspenso' : 'Ativo'}); await load(); gerir(id); toast(c.estado === 'Ativo' ? 'Condomínio suspenso' : 'Condomínio reativado'); } catch (err) { showErr(err); }
+  };
+  $('gForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    try { await api('PATCH', `/api/plataforma/condominios/${id}`, {plano: $('gP').value}); await load(); closeModal(); toast('Plano atualizado'); } catch (err) { showErr(err); }
+  });
+}
+function alterarSenha() {
+  modal('Alterar palavra-passe', `<form id="pwForm">
+    <div class="field full"><label for="pwA">Palavra-passe atual</label><input id="pwA" type="password" autocomplete="current-password" required></div>
+    <div class="field"><label for="pwN">Nova (mín. 8 caracteres)</label><input id="pwN" type="password" autocomplete="new-password" minlength="8" required></div>
+    <div class="field"><label for="pwN2">Repetir nova</label><input id="pwN2" type="password" autocomplete="new-password" minlength="8" required></div>
+    ${errBox}<footer><span></span><div><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></footer></form>`);
+  $('pwForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    if ($('pwN').value !== $('pwN2').value) return showErr(new Error('As duas palavras-passe novas não coincidem.'));
+    try { await api('POST', '/api/senha', { atual: $('pwA').value, nova: $('pwN').value }); closeModal(); toast('Palavra-passe alterada'); } catch (err) { showErr(err); }
+  });
+}
+
+document.addEventListener('click', async e => {
+  const t = e.target;
+  if (t.id === 'ov' || t.closest('[data-close]')) return closeModal();
+  const tb = t.closest('[data-tab]'); if (tb) { tab = tb.dataset.tab; try { history.replaceState(null, '', '#' + tab); } catch (e) {} return render(); }
+  if (t.closest('[data-novo]')) return novoCondominio();
+  const g = t.closest('[data-ver]'); if (g) return gerir(g.dataset.ver);
+  const r = t.closest('[data-repor]');
+  if (r) { try { const j = await api('POST', `/api/plataforma/utilizadores/${r.dataset.repor}/repor`); const c = D.condominios.find(x => x.admins.some(a => a.id === r.dataset.repor)); credenciais(j.utilizador, j.senha_temporaria, c ? c.nome : 'condomínio'); } catch (err) { toast(err.message); } return; }
+  if (t.closest('[data-emitir]')) { try { const j = await api('POST', '/api/plataforma/faturas/emitir', {periodo: curMes}); await load(); toast(j.emitidas ? `${j.emitidas} fatura${j.emitidas>1?'s':''} emitida${j.emitidas>1?'s':''}` : 'Todas as faturas do mês já estavam emitidas'); } catch (err) { toast(err.message); } return; }
+  const f = t.closest('[data-fat]');
+  if (f) { const [id, estado] = f.dataset.fat.split('|'); try { await api('PATCH', `/api/plataforma/faturas/${id}`, {estado}); await load(); toast('Fatura atualizada'); } catch (err) { toast(err.message); } }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+$('btnSenha').onclick = alterarSenha;
+$('btnSair').onclick = async () => { try { await fetch('/api/logout', {method:'POST'}); } finally { location.href = '/login'; } };
+
+async function load() { D = await api('GET', '/api/plataforma/resumo'); $('uNome').textContent = D.eu.nome; render(); }
+load().catch(err => { $('view').innerHTML = `<div class="panel"><p class="empty">${esc(err.message)}</p></div>`; });
+})();
+</script>
+</body>
+</html>

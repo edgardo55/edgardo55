@@ -1,0 +1,1962 @@
+{
+ "config": [
+  {
+   "id": "geral",
+   "nome": "Condomínio Jardins do Talatona",
+   "morada": "Talatona, Luanda",
+   "nif": "5417000000",
+   "iban": "AO06 0000 0000 0000 0000 0000 0",
+   "diaVencimento": 10,
+   "inicio": "2026-01",
+   "plano": "Profissional"
+  }
+ ],
+ "moradores": [
+  {
+   "id": "m01",
+   "fracao": "A-1Esq",
+   "bloco": "A",
+   "tipologia": "T3",
+   "nome": "Ana Paula Domingos",
+   "telefone": "+244 920 927 360",
+   "tipo": "Proprietário",
+   "quota": 45000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 2,
+   "viaturas": "",
+   "bi": "100000000LA040",
+   "email": "ana.domingos@exemplo.ao",
+   "emergencia": "Familiar · +244 921 000 100"
+  },
+  {
+   "id": "m02",
+   "fracao": "A-1Dto",
+   "bloco": "A",
+   "tipologia": "T2",
+   "nome": "João Manuel Kiala",
+   "telefone": "+244 936 755 578",
+   "tipo": "Inquilino",
+   "quota": 35000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 3,
+   "viaturas": "LD-11-21-AB",
+   "bi": "100007919LA041",
+   "email": "joao.kiala@exemplo.ao",
+   "emergencia": "Familiar · +244 922 000 101"
+  },
+  {
+   "id": "m03",
+   "fracao": "A-2Esq",
+   "bloco": "A",
+   "tipologia": "T2",
+   "nome": "Esperança Neto",
+   "telefone": "+244 946 776 778",
+   "tipo": "Proprietário",
+   "quota": 35000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 4,
+   "viaturas": "LD-12-22-AC",
+   "bi": "100015838LA042",
+   "email": "esperanca.neto@exemplo.ao",
+   "emergencia": "Familiar · +244 923 000 102"
+  },
+  {
+   "id": "m04",
+   "fracao": "A-2Dto",
+   "bloco": "A",
+   "tipologia": "T3",
+   "nome": "Carlos Alberto Mateus",
+   "telefone": "+244 962 715 671",
+   "tipo": "Proprietário",
+   "quota": 45000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 5,
+   "viaturas": "",
+   "bi": "100023757LA043",
+   "email": "carlos.mateus@exemplo.ao",
+   "emergencia": "Familiar · +244 924 000 103"
+  },
+  {
+   "id": "m05",
+   "fracao": "A-3Esq",
+   "bloco": "A",
+   "tipologia": "T2",
+   "nome": "Teresa Bumba",
+   "telefone": "+244 984 317 436",
+   "tipo": "Proprietário",
+   "quota": 35000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 2,
+   "viaturas": "LD-14-24-AE",
+   "bi": "100031676LA044",
+   "email": "teresa.bumba@exemplo.ao",
+   "emergencia": "Familiar · +244 925 000 104"
+  },
+  {
+   "id": "m06",
+   "fracao": "A-3Dto",
+   "bloco": "A",
+   "tipologia": "T2",
+   "nome": "Nelson Cassoma",
+   "telefone": "+244 975 727 148",
+   "tipo": "Inquilino",
+   "quota": 35000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 3,
+   "viaturas": "LD-15-25-AF",
+   "bi": "100039595LA045",
+   "email": "nelson.cassoma@exemplo.ao",
+   "emergencia": "Familiar · +244 926 000 105"
+  },
+  {
+   "id": "m07",
+   "fracao": "A-4Esq",
+   "bloco": "A",
+   "tipologia": "T3",
+   "nome": "Luísa Fernandes",
+   "telefone": "+244 974 520 929",
+   "tipo": "Proprietário",
+   "quota": 45000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 4,
+   "viaturas": "",
+   "bi": "100047514LA046",
+   "email": "luisa.fernandes@exemplo.ao",
+   "emergencia": "Familiar · +244 927 000 106"
+  },
+  {
+   "id": "m08",
+   "fracao": "A-4Dto",
+   "bloco": "A",
+   "tipologia": "T2",
+   "nome": "Paulo Sebastião",
+   "telefone": "+244 983 210 561",
+   "tipo": "Proprietário",
+   "quota": 35000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 5,
+   "viaturas": "LD-17-27-AH",
+   "bi": "100055433LA047",
+   "email": "paulo.sebastiao@exemplo.ao",
+   "emergencia": "Familiar · +244 928 000 107"
+  },
+  {
+   "id": "m09",
+   "fracao": "B-1Esq",
+   "bloco": "B",
+   "tipologia": "T2",
+   "nome": "Mariana Tchipilica",
+   "telefone": "+244 992 718 678",
+   "tipo": "Proprietário",
+   "quota": 35000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 2,
+   "viaturas": "LD-18-28-AI",
+   "bi": "100063352LA048",
+   "email": "mariana.tchipilica@exemplo.ao",
+   "emergencia": "Familiar · +244 929 000 108"
+  },
+  {
+   "id": "m10",
+   "fracao": "B-1Dto",
+   "bloco": "B",
+   "tipologia": "T3",
+   "nome": "Adilson Vunge",
+   "telefone": "+244 965 919 916",
+   "tipo": "Inquilino",
+   "quota": 45000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 3,
+   "viaturas": "",
+   "bi": "100071271LA049",
+   "email": "adilson.vunge@exemplo.ao",
+   "emergencia": "Familiar · +244 930 000 109"
+  },
+  {
+   "id": "m11",
+   "fracao": "B-2Esq",
+   "bloco": "B",
+   "tipologia": "T2",
+   "nome": "Rosa Quissanga",
+   "telefone": "+244 949 401 852",
+   "tipo": "Proprietário",
+   "quota": 35000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 4,
+   "viaturas": "LD-20-30-AK",
+   "bi": "100079190LA050",
+   "email": "rosa.quissanga@exemplo.ao",
+   "emergencia": "Familiar · +244 931 000 110"
+  },
+  {
+   "id": "m12",
+   "fracao": "B-2Dto",
+   "bloco": "B",
+   "tipologia": "T2",
+   "nome": "Fernando Lukamba",
+   "telefone": "+244 946 237 367",
+   "tipo": "Proprietário",
+   "quota": 35000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 5,
+   "viaturas": "LD-21-31-AL",
+   "bi": "100087109LA051",
+   "email": "fernando.lukamba@exemplo.ao",
+   "emergencia": "Familiar · +244 932 000 111"
+  },
+  {
+   "id": "m13",
+   "fracao": "B-3Esq",
+   "bloco": "B",
+   "tipologia": "T3",
+   "nome": "Helena Sapalo",
+   "telefone": "+244 953 365 942",
+   "tipo": "Proprietário",
+   "quota": 45000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 2,
+   "viaturas": "",
+   "bi": "100095028LA052",
+   "email": "helena.sapalo@exemplo.ao",
+   "emergencia": "Familiar · +244 933 000 112"
+  },
+  {
+   "id": "m14",
+   "fracao": "B-3Dto",
+   "bloco": "B",
+   "tipologia": "T2",
+   "nome": "Domingos Chivukuvuku",
+   "telefone": "+244 964 755 889",
+   "tipo": "Inquilino",
+   "quota": 35000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 3,
+   "viaturas": "LD-23-33-AN"
+  },
+  {
+   "id": "m15",
+   "fracao": "B-4Esq",
+   "bloco": "B",
+   "tipologia": "T2",
+   "nome": "Isabel Ngola",
+   "telefone": "+244 924 345 604",
+   "tipo": "Proprietário",
+   "quota": 35000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 4,
+   "viaturas": "LD-24-34-AO"
+  },
+  {
+   "id": "m16",
+   "fracao": "B-4Dto",
+   "bloco": "B",
+   "tipologia": "T3",
+   "nome": "Ricardo Kapapelo",
+   "telefone": "+244 960 478 273",
+   "tipo": "Proprietário",
+   "quota": 45000,
+   "desde": "2026-01",
+   "estado": "Ativo",
+   "agregado": 5,
+   "viaturas": ""
+  }
+ ],
+ "pagamentos": [
+  {
+   "id": "p0001",
+   "moradorId": "m01",
+   "mes": "2026-01",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-01-01",
+   "referencia": "REC-1002"
+  },
+  {
+   "id": "p0002",
+   "moradorId": "m01",
+   "mes": "2026-02",
+   "valor": 45000,
+   "metodo": "Depósito BIC",
+   "data": "2026-02-05",
+   "referencia": "REC-1003"
+  },
+  {
+   "id": "p0003",
+   "moradorId": "m01",
+   "mes": "2026-03",
+   "valor": 45000,
+   "metodo": "Transferência BFA",
+   "data": "2026-03-13",
+   "referencia": "REC-1004"
+  },
+  {
+   "id": "p0004",
+   "moradorId": "m01",
+   "mes": "2026-04",
+   "valor": 45000,
+   "metodo": "Transferência BFA",
+   "data": "2026-04-03",
+   "referencia": "REC-1005"
+  },
+  {
+   "id": "p0005",
+   "moradorId": "m01",
+   "mes": "2026-05",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-05-04",
+   "referencia": "REC-1006"
+  },
+  {
+   "id": "p0006",
+   "moradorId": "m01",
+   "mes": "2026-06",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-06-06",
+   "referencia": "REC-1007"
+  },
+  {
+   "id": "p0007",
+   "moradorId": "m01",
+   "mes": "2026-07",
+   "valor": 45000,
+   "metodo": "Depósito BIC",
+   "data": "2026-07-08",
+   "referencia": "REC-1008"
+  },
+  {
+   "id": "p0008",
+   "moradorId": "m01",
+   "mes": "2026-08",
+   "valor": 45000,
+   "metodo": "Numerário",
+   "data": "2026-08-04",
+   "referencia": "REC-1009"
+  },
+  {
+   "id": "p0009",
+   "moradorId": "m01",
+   "mes": "2026-09",
+   "valor": 45000,
+   "metodo": "Numerário",
+   "data": "2026-09-07",
+   "referencia": "REC-1010"
+  },
+  {
+   "id": "p0010",
+   "moradorId": "m02",
+   "mes": "2026-01",
+   "valor": 35000,
+   "metodo": "Transferência BFA",
+   "data": "2026-01-09",
+   "referencia": "REC-1011"
+  },
+  {
+   "id": "p0011",
+   "moradorId": "m02",
+   "mes": "2026-02",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-02-08",
+   "referencia": "REC-1012"
+  },
+  {
+   "id": "p0012",
+   "moradorId": "m02",
+   "mes": "2026-03",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-03-14",
+   "referencia": "REC-1013"
+  },
+  {
+   "id": "p0013",
+   "moradorId": "m02",
+   "mes": "2026-04",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-04-10",
+   "referencia": "REC-1014"
+  },
+  {
+   "id": "p0014",
+   "moradorId": "m02",
+   "mes": "2026-05",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-05-09",
+   "referencia": "REC-1015"
+  },
+  {
+   "id": "p0015",
+   "moradorId": "m02",
+   "mes": "2026-06",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-06-05",
+   "referencia": "REC-1016"
+  },
+  {
+   "id": "p0016",
+   "moradorId": "m02",
+   "mes": "2026-07",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-07-12",
+   "referencia": "REC-1017"
+  },
+  {
+   "id": "p0017",
+   "moradorId": "m02",
+   "mes": "2026-08",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-08-02",
+   "referencia": "REC-1018"
+  },
+  {
+   "id": "p0018",
+   "moradorId": "m02",
+   "mes": "2026-09",
+   "valor": 35000,
+   "metodo": "Transferência BFA",
+   "data": "2026-09-02",
+   "referencia": "REC-1019"
+  },
+  {
+   "id": "p0019",
+   "moradorId": "m03",
+   "mes": "2026-01",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-01-02",
+   "referencia": "REC-1020"
+  },
+  {
+   "id": "p0020",
+   "moradorId": "m03",
+   "mes": "2026-02",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-02-04",
+   "referencia": "REC-1021"
+  },
+  {
+   "id": "p0021",
+   "moradorId": "m03",
+   "mes": "2026-03",
+   "valor": 35000,
+   "metodo": "Transferência BFA",
+   "data": "2026-03-03",
+   "referencia": "REC-1022"
+  },
+  {
+   "id": "p0022",
+   "moradorId": "m03",
+   "mes": "2026-04",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-04-09",
+   "referencia": "REC-1023"
+  },
+  {
+   "id": "p0023",
+   "moradorId": "m03",
+   "mes": "2026-05",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-05-13",
+   "referencia": "REC-1024"
+  },
+  {
+   "id": "p0024",
+   "moradorId": "m04",
+   "mes": "2026-01",
+   "valor": 45000,
+   "metodo": "Numerário",
+   "data": "2026-01-13",
+   "referencia": "REC-1025"
+  },
+  {
+   "id": "p0025",
+   "moradorId": "m04",
+   "mes": "2026-02",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-02-11",
+   "referencia": "REC-1026"
+  },
+  {
+   "id": "p0026",
+   "moradorId": "m04",
+   "mes": "2026-03",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-03-01",
+   "referencia": "REC-1027"
+  },
+  {
+   "id": "p0027",
+   "moradorId": "m04",
+   "mes": "2026-04",
+   "valor": 45000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-04-02",
+   "referencia": "REC-1028"
+  },
+  {
+   "id": "p0028",
+   "moradorId": "m04",
+   "mes": "2026-05",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-05-09",
+   "referencia": "REC-1029"
+  },
+  {
+   "id": "p0029",
+   "moradorId": "m04",
+   "mes": "2026-06",
+   "valor": 45000,
+   "metodo": "Transferência BFA",
+   "data": "2026-06-11",
+   "referencia": "REC-1030"
+  },
+  {
+   "id": "p0030",
+   "moradorId": "m04",
+   "mes": "2026-07",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-07-10",
+   "referencia": "REC-1031"
+  },
+  {
+   "id": "p0031",
+   "moradorId": "m04",
+   "mes": "2026-08",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-08-13",
+   "referencia": "REC-1032"
+  },
+  {
+   "id": "p0032",
+   "moradorId": "m04",
+   "mes": "2026-09",
+   "valor": 45000,
+   "metodo": "Numerário",
+   "data": "2026-09-06",
+   "referencia": "REC-1033"
+  },
+  {
+   "id": "p0033",
+   "moradorId": "m05",
+   "mes": "2026-01",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-01-07",
+   "referencia": "REC-1034"
+  },
+  {
+   "id": "p0034",
+   "moradorId": "m05",
+   "mes": "2026-02",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-02-13",
+   "referencia": "REC-1035"
+  },
+  {
+   "id": "p0035",
+   "moradorId": "m05",
+   "mes": "2026-03",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-03-13",
+   "referencia": "REC-1036"
+  },
+  {
+   "id": "p0036",
+   "moradorId": "m05",
+   "mes": "2026-04",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-04-13",
+   "referencia": "REC-1037"
+  },
+  {
+   "id": "p0037",
+   "moradorId": "m05",
+   "mes": "2026-05",
+   "valor": 35000,
+   "metodo": "Transferência BFA",
+   "data": "2026-05-14",
+   "referencia": "REC-1038"
+  },
+  {
+   "id": "p0038",
+   "moradorId": "m05",
+   "mes": "2026-06",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-06-10",
+   "referencia": "REC-1039"
+  },
+  {
+   "id": "p0039",
+   "moradorId": "m05",
+   "mes": "2026-07",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-07-04",
+   "referencia": "REC-1040"
+  },
+  {
+   "id": "p0040",
+   "moradorId": "m05",
+   "mes": "2026-08",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-08-08",
+   "referencia": "REC-1041"
+  },
+  {
+   "id": "p0041",
+   "moradorId": "m06",
+   "mes": "2026-01",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-01-10",
+   "referencia": "REC-1042"
+  },
+  {
+   "id": "p0042",
+   "moradorId": "m06",
+   "mes": "2026-02",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-02-07",
+   "referencia": "REC-1043"
+  },
+  {
+   "id": "p0043",
+   "moradorId": "m06",
+   "mes": "2026-03",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-03-02",
+   "referencia": "REC-1044"
+  },
+  {
+   "id": "p0044",
+   "moradorId": "m06",
+   "mes": "2026-04",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-04-02",
+   "referencia": "REC-1045"
+  },
+  {
+   "id": "p0045",
+   "moradorId": "m07",
+   "mes": "2026-01",
+   "valor": 45000,
+   "metodo": "Numerário",
+   "data": "2026-01-01",
+   "referencia": "REC-1046"
+  },
+  {
+   "id": "p0046",
+   "moradorId": "m07",
+   "mes": "2026-02",
+   "valor": 45000,
+   "metodo": "Numerário",
+   "data": "2026-02-13",
+   "referencia": "REC-1047"
+  },
+  {
+   "id": "p0047",
+   "moradorId": "m07",
+   "mes": "2026-03",
+   "valor": 45000,
+   "metodo": "Depósito BIC",
+   "data": "2026-03-14",
+   "referencia": "REC-1048"
+  },
+  {
+   "id": "p0048",
+   "moradorId": "m07",
+   "mes": "2026-04",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-04-06",
+   "referencia": "REC-1049"
+  },
+  {
+   "id": "p0049",
+   "moradorId": "m07",
+   "mes": "2026-05",
+   "valor": 45000,
+   "metodo": "Numerário",
+   "data": "2026-05-11",
+   "referencia": "REC-1050"
+  },
+  {
+   "id": "p0050",
+   "moradorId": "m07",
+   "mes": "2026-06",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-06-06",
+   "referencia": "REC-1051"
+  },
+  {
+   "id": "p0051",
+   "moradorId": "m07",
+   "mes": "2026-07",
+   "valor": 45000,
+   "metodo": "Numerário",
+   "data": "2026-07-06",
+   "referencia": "REC-1052"
+  },
+  {
+   "id": "p0052",
+   "moradorId": "m07",
+   "mes": "2026-08",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-08-08",
+   "referencia": "REC-1053"
+  },
+  {
+   "id": "p0053",
+   "moradorId": "m07",
+   "mes": "2026-09",
+   "valor": 45000,
+   "metodo": "Depósito BIC",
+   "data": "2026-09-09",
+   "referencia": "REC-1054"
+  },
+  {
+   "id": "p0054",
+   "moradorId": "m08",
+   "mes": "2026-01",
+   "valor": 35000,
+   "metodo": "Transferência BFA",
+   "data": "2026-01-11",
+   "referencia": "REC-1055"
+  },
+  {
+   "id": "p0055",
+   "moradorId": "m08",
+   "mes": "2026-02",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-02-03",
+   "referencia": "REC-1056"
+  },
+  {
+   "id": "p0056",
+   "moradorId": "m08",
+   "mes": "2026-03",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-03-14",
+   "referencia": "REC-1057"
+  },
+  {
+   "id": "p0057",
+   "moradorId": "m08",
+   "mes": "2026-04",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-04-09",
+   "referencia": "REC-1058"
+  },
+  {
+   "id": "p0058",
+   "moradorId": "m08",
+   "mes": "2026-05",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-05-13",
+   "referencia": "REC-1059"
+  },
+  {
+   "id": "p0059",
+   "moradorId": "m08",
+   "mes": "2026-06",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-06-10",
+   "referencia": "REC-1060"
+  },
+  {
+   "id": "p0060",
+   "moradorId": "m08",
+   "mes": "2026-07",
+   "valor": 35000,
+   "metodo": "Transferência BFA",
+   "data": "2026-07-07",
+   "referencia": "REC-1061"
+  },
+  {
+   "id": "p0061",
+   "moradorId": "m08",
+   "mes": "2026-08",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-08-11",
+   "referencia": "REC-1062"
+  },
+  {
+   "id": "p0062",
+   "moradorId": "m08",
+   "mes": "2026-09",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-09-07",
+   "referencia": "REC-1063"
+  },
+  {
+   "id": "p0063",
+   "moradorId": "m09",
+   "mes": "2026-01",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-01-03",
+   "referencia": "REC-1064"
+  },
+  {
+   "id": "p0064",
+   "moradorId": "m09",
+   "mes": "2026-02",
+   "valor": 35000,
+   "metodo": "Transferência BFA",
+   "data": "2026-02-08",
+   "referencia": "REC-1065"
+  },
+  {
+   "id": "p0065",
+   "moradorId": "m09",
+   "mes": "2026-03",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-03-08",
+   "referencia": "REC-1066"
+  },
+  {
+   "id": "p0066",
+   "moradorId": "m09",
+   "mes": "2026-04",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-04-06",
+   "referencia": "REC-1067"
+  },
+  {
+   "id": "p0067",
+   "moradorId": "m09",
+   "mes": "2026-05",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-05-01",
+   "referencia": "REC-1068"
+  },
+  {
+   "id": "p0068",
+   "moradorId": "m09",
+   "mes": "2026-06",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-06-08",
+   "referencia": "REC-1069"
+  },
+  {
+   "id": "p0069",
+   "moradorId": "m09",
+   "mes": "2026-07",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-07-11",
+   "referencia": "REC-1070"
+  },
+  {
+   "id": "p0070",
+   "moradorId": "m09",
+   "mes": "2026-08",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-08-04",
+   "referencia": "REC-1071"
+  },
+  {
+   "id": "p0071",
+   "moradorId": "m09",
+   "mes": "2026-09",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-09-07",
+   "referencia": "REC-1072"
+  },
+  {
+   "id": "p0072",
+   "moradorId": "m10",
+   "mes": "2026-01",
+   "valor": 45000,
+   "metodo": "Numerário",
+   "data": "2026-01-12",
+   "referencia": "REC-1073"
+  },
+  {
+   "id": "p0073",
+   "moradorId": "m10",
+   "mes": "2026-02",
+   "valor": 45000,
+   "metodo": "Depósito BIC",
+   "data": "2026-02-13",
+   "referencia": "REC-1074"
+  },
+  {
+   "id": "p0074",
+   "moradorId": "m10",
+   "mes": "2026-03",
+   "valor": 45000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-03-14",
+   "referencia": "REC-1075"
+  },
+  {
+   "id": "p0075",
+   "moradorId": "m10",
+   "mes": "2026-04",
+   "valor": 45000,
+   "metodo": "Depósito BIC",
+   "data": "2026-04-11",
+   "referencia": "REC-1076"
+  },
+  {
+   "id": "p0076",
+   "moradorId": "m10",
+   "mes": "2026-05",
+   "valor": 45000,
+   "metodo": "Numerário",
+   "data": "2026-05-11",
+   "referencia": "REC-1077"
+  },
+  {
+   "id": "p0077",
+   "moradorId": "m10",
+   "mes": "2026-06",
+   "valor": 45000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-06-01",
+   "referencia": "REC-1078"
+  },
+  {
+   "id": "p0078",
+   "moradorId": "m10",
+   "mes": "2026-07",
+   "valor": 45000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-07-02",
+   "referencia": "REC-1079"
+  },
+  {
+   "id": "p0079",
+   "moradorId": "m11",
+   "mes": "2026-01",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-01-01",
+   "referencia": "REC-1080"
+  },
+  {
+   "id": "p0080",
+   "moradorId": "m11",
+   "mes": "2026-02",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-02-14",
+   "referencia": "REC-1081"
+  },
+  {
+   "id": "p0081",
+   "moradorId": "m11",
+   "mes": "2026-03",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-03-02",
+   "referencia": "REC-1082"
+  },
+  {
+   "id": "p0082",
+   "moradorId": "m11",
+   "mes": "2026-04",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-04-10",
+   "referencia": "REC-1083"
+  },
+  {
+   "id": "p0083",
+   "moradorId": "m11",
+   "mes": "2026-05",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-05-07",
+   "referencia": "REC-1084"
+  },
+  {
+   "id": "p0084",
+   "moradorId": "m11",
+   "mes": "2026-06",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-06-06",
+   "referencia": "REC-1085"
+  },
+  {
+   "id": "p0085",
+   "moradorId": "m11",
+   "mes": "2026-07",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-07-11",
+   "referencia": "REC-1086"
+  },
+  {
+   "id": "p0086",
+   "moradorId": "m11",
+   "mes": "2026-08",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-08-06",
+   "referencia": "REC-1087"
+  },
+  {
+   "id": "p0087",
+   "moradorId": "m12",
+   "mes": "2026-01",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-01-12",
+   "referencia": "REC-1088"
+  },
+  {
+   "id": "p0088",
+   "moradorId": "m12",
+   "mes": "2026-02",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-02-03",
+   "referencia": "REC-1089"
+  },
+  {
+   "id": "p0089",
+   "moradorId": "m12",
+   "mes": "2026-03",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-03-08",
+   "referencia": "REC-1090"
+  },
+  {
+   "id": "p0090",
+   "moradorId": "m12",
+   "mes": "2026-04",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-04-03",
+   "referencia": "REC-1091"
+  },
+  {
+   "id": "p0091",
+   "moradorId": "m12",
+   "mes": "2026-05",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-05-03",
+   "referencia": "REC-1092"
+  },
+  {
+   "id": "p0092",
+   "moradorId": "m12",
+   "mes": "2026-06",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-06-04",
+   "referencia": "REC-1093"
+  },
+  {
+   "id": "p0093",
+   "moradorId": "m12",
+   "mes": "2026-07",
+   "valor": 35000,
+   "metodo": "Transferência BFA",
+   "data": "2026-07-08",
+   "referencia": "REC-1094"
+  },
+  {
+   "id": "p0094",
+   "moradorId": "m12",
+   "mes": "2026-08",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-08-14",
+   "referencia": "REC-1095"
+  },
+  {
+   "id": "p0095",
+   "moradorId": "m13",
+   "mes": "2026-01",
+   "valor": 45000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-01-05",
+   "referencia": "REC-1096"
+  },
+  {
+   "id": "p0096",
+   "moradorId": "m13",
+   "mes": "2026-02",
+   "valor": 45000,
+   "metodo": "Transferência BFA",
+   "data": "2026-02-01",
+   "referencia": "REC-1097"
+  },
+  {
+   "id": "p0097",
+   "moradorId": "m13",
+   "mes": "2026-03",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-03-02",
+   "referencia": "REC-1098"
+  },
+  {
+   "id": "p0098",
+   "moradorId": "m13",
+   "mes": "2026-04",
+   "valor": 45000,
+   "metodo": "Depósito BIC",
+   "data": "2026-04-13",
+   "referencia": "REC-1099"
+  },
+  {
+   "id": "p0099",
+   "moradorId": "m13",
+   "mes": "2026-05",
+   "valor": 45000,
+   "metodo": "Transferência BFA",
+   "data": "2026-05-11",
+   "referencia": "REC-1100"
+  },
+  {
+   "id": "p0100",
+   "moradorId": "m13",
+   "mes": "2026-06",
+   "valor": 45000,
+   "metodo": "Numerário",
+   "data": "2026-06-12",
+   "referencia": "REC-1101"
+  },
+  {
+   "id": "p0101",
+   "moradorId": "m13",
+   "mes": "2026-07",
+   "valor": 45000,
+   "metodo": "Depósito BIC",
+   "data": "2026-07-12",
+   "referencia": "REC-1102"
+  },
+  {
+   "id": "p0102",
+   "moradorId": "m13",
+   "mes": "2026-08",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-08-09",
+   "referencia": "REC-1103"
+  },
+  {
+   "id": "p0103",
+   "moradorId": "m14",
+   "mes": "2026-01",
+   "valor": 35000,
+   "metodo": "Transferência BFA",
+   "data": "2026-01-07",
+   "referencia": "REC-1104"
+  },
+  {
+   "id": "p0104",
+   "moradorId": "m14",
+   "mes": "2026-02",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-02-08",
+   "referencia": "REC-1105"
+  },
+  {
+   "id": "p0105",
+   "moradorId": "m14",
+   "mes": "2026-03",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-03-10",
+   "referencia": "REC-1106"
+  },
+  {
+   "id": "p0106",
+   "moradorId": "m14",
+   "mes": "2026-04",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-04-11",
+   "referencia": "REC-1107"
+  },
+  {
+   "id": "p0107",
+   "moradorId": "m14",
+   "mes": "2026-05",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-05-12",
+   "referencia": "REC-1108"
+  },
+  {
+   "id": "p0108",
+   "moradorId": "m14",
+   "mes": "2026-06",
+   "valor": 35000,
+   "metodo": "Transferência BFA",
+   "data": "2026-06-07",
+   "referencia": "REC-1109"
+  },
+  {
+   "id": "p0109",
+   "moradorId": "m14",
+   "mes": "2026-07",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-07-14",
+   "referencia": "REC-1110"
+  },
+  {
+   "id": "p0110",
+   "moradorId": "m14",
+   "mes": "2026-08",
+   "valor": 35000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-08-06",
+   "referencia": "REC-1111"
+  },
+  {
+   "id": "p0111",
+   "moradorId": "m14",
+   "mes": "2026-09",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-09-05",
+   "referencia": "REC-1112"
+  },
+  {
+   "id": "p0112",
+   "moradorId": "m15",
+   "mes": "2026-01",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-01-11",
+   "referencia": "REC-1113"
+  },
+  {
+   "id": "p0113",
+   "moradorId": "m15",
+   "mes": "2026-02",
+   "valor": 35000,
+   "metodo": "Transferência BAI",
+   "data": "2026-02-12",
+   "referencia": "REC-1114"
+  },
+  {
+   "id": "p0114",
+   "moradorId": "m15",
+   "mes": "2026-03",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-03-04",
+   "referencia": "REC-1115"
+  },
+  {
+   "id": "p0115",
+   "moradorId": "m15",
+   "mes": "2026-04",
+   "valor": 35000,
+   "metodo": "Numerário",
+   "data": "2026-04-02",
+   "referencia": "REC-1116"
+  },
+  {
+   "id": "p0116",
+   "moradorId": "m15",
+   "mes": "2026-05",
+   "valor": 35000,
+   "metodo": "Depósito BIC",
+   "data": "2026-05-12",
+   "referencia": "REC-1117"
+  },
+  {
+   "id": "p0117",
+   "moradorId": "m16",
+   "mes": "2026-01",
+   "valor": 45000,
+   "metodo": "Transferência BFA",
+   "data": "2026-01-08",
+   "referencia": "REC-1118"
+  },
+  {
+   "id": "p0118",
+   "moradorId": "m16",
+   "mes": "2026-02",
+   "valor": 45000,
+   "metodo": "Transferência BFA",
+   "data": "2026-02-13",
+   "referencia": "REC-1119"
+  },
+  {
+   "id": "p0119",
+   "moradorId": "m16",
+   "mes": "2026-03",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-03-13",
+   "referencia": "REC-1120"
+  },
+  {
+   "id": "p0120",
+   "moradorId": "m16",
+   "mes": "2026-04",
+   "valor": 45000,
+   "metodo": "Transferência BFA",
+   "data": "2026-04-10",
+   "referencia": "REC-1121"
+  },
+  {
+   "id": "p0121",
+   "moradorId": "m16",
+   "mes": "2026-05",
+   "valor": 45000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-05-06",
+   "referencia": "REC-1122"
+  },
+  {
+   "id": "p0122",
+   "moradorId": "m16",
+   "mes": "2026-06",
+   "valor": 45000,
+   "metodo": "Transferência BAI",
+   "data": "2026-06-09",
+   "referencia": "REC-1123"
+  },
+  {
+   "id": "p0123",
+   "moradorId": "m16",
+   "mes": "2026-07",
+   "valor": 45000,
+   "metodo": "Numerário",
+   "data": "2026-07-13",
+   "referencia": "REC-1124"
+  },
+  {
+   "id": "p0124",
+   "moradorId": "m16",
+   "mes": "2026-08",
+   "valor": 45000,
+   "metodo": "Depósito BIC",
+   "data": "2026-08-05",
+   "referencia": "REC-1125"
+  },
+  {
+   "id": "p0125",
+   "moradorId": "m16",
+   "mes": "2026-09",
+   "valor": 45000,
+   "metodo": "Multicaixa Express",
+   "data": "2026-09-13",
+   "referencia": "REC-1126"
+  }
+ ],
+ "despesas": [
+  {
+   "id": "d001",
+   "data": "2026-04-05",
+   "categoria": "Segurança",
+   "fornecedor": "Guarda Kalunga, Lda",
+   "descricao": "Segurança — 04/2026",
+   "valor": 184200
+  },
+  {
+   "id": "d002",
+   "data": "2026-04-05",
+   "categoria": "Energia",
+   "fornecedor": "ENDE",
+   "descricao": "Energia — 04/2026",
+   "valor": 50700
+  },
+  {
+   "id": "d003",
+   "data": "2026-04-05",
+   "categoria": "Água",
+   "fornecedor": "EPAL",
+   "descricao": "Água — 04/2026",
+   "valor": 19300
+  },
+  {
+   "id": "d004",
+   "data": "2026-04-05",
+   "categoria": "Limpeza",
+   "fornecedor": "Brilho Total Serviços",
+   "descricao": "Limpeza — 04/2026",
+   "valor": 56500
+  },
+  {
+   "id": "d005",
+   "data": "2026-04-05",
+   "categoria": "Salários",
+   "fornecedor": "Folha de pessoal",
+   "descricao": "Salários — 04/2026",
+   "valor": 201700
+  },
+  {
+   "id": "d006",
+   "data": "2026-04-18",
+   "categoria": "Gerador",
+   "fornecedor": "Pumangol",
+   "descricao": "Gasóleo para o gerador",
+   "valor": 31000
+  },
+  {
+   "id": "d007",
+   "data": "2026-05-05",
+   "categoria": "Segurança",
+   "fornecedor": "Guarda Kalunga, Lda",
+   "descricao": "Segurança — 05/2026",
+   "valor": 195900
+  },
+  {
+   "id": "d008",
+   "data": "2026-05-05",
+   "categoria": "Energia",
+   "fornecedor": "ENDE",
+   "descricao": "Energia — 05/2026",
+   "valor": 50500
+  },
+  {
+   "id": "d009",
+   "data": "2026-05-05",
+   "categoria": "Água",
+   "fornecedor": "EPAL",
+   "descricao": "Água — 05/2026",
+   "valor": 19900
+  },
+  {
+   "id": "d010",
+   "data": "2026-05-05",
+   "categoria": "Limpeza",
+   "fornecedor": "Brilho Total Serviços",
+   "descricao": "Limpeza — 05/2026",
+   "valor": 57300
+  },
+  {
+   "id": "d011",
+   "data": "2026-05-05",
+   "categoria": "Salários",
+   "fornecedor": "Folha de pessoal",
+   "descricao": "Salários — 05/2026",
+   "valor": 219700
+  },
+  {
+   "id": "d012",
+   "data": "2026-05-18",
+   "categoria": "Gerador",
+   "fornecedor": "Pumangol",
+   "descricao": "Gasóleo para o gerador",
+   "valor": 61500
+  },
+  {
+   "id": "d013",
+   "data": "2026-06-05",
+   "categoria": "Segurança",
+   "fornecedor": "Guarda Kalunga, Lda",
+   "descricao": "Segurança — 06/2026",
+   "valor": 180200
+  },
+  {
+   "id": "d014",
+   "data": "2026-06-05",
+   "categoria": "Energia",
+   "fornecedor": "ENDE",
+   "descricao": "Energia — 06/2026",
+   "valor": 44600
+  },
+  {
+   "id": "d015",
+   "data": "2026-06-05",
+   "categoria": "Água",
+   "fornecedor": "EPAL",
+   "descricao": "Água — 06/2026",
+   "valor": 21500
+  },
+  {
+   "id": "d016",
+   "data": "2026-06-05",
+   "categoria": "Limpeza",
+   "fornecedor": "Brilho Total Serviços",
+   "descricao": "Limpeza — 06/2026",
+   "valor": 55400
+  },
+  {
+   "id": "d017",
+   "data": "2026-06-05",
+   "categoria": "Salários",
+   "fornecedor": "Folha de pessoal",
+   "descricao": "Salários — 06/2026",
+   "valor": 215300
+  },
+  {
+   "id": "d018",
+   "data": "2026-06-18",
+   "categoria": "Gerador",
+   "fornecedor": "Pumangol",
+   "descricao": "Gasóleo para o gerador",
+   "valor": 56600
+  },
+  {
+   "id": "d019",
+   "data": "2026-07-05",
+   "categoria": "Segurança",
+   "fornecedor": "Guarda Kalunga, Lda",
+   "descricao": "Segurança — 07/2026",
+   "valor": 197700
+  },
+  {
+   "id": "d020",
+   "data": "2026-07-05",
+   "categoria": "Energia",
+   "fornecedor": "ENDE",
+   "descricao": "Energia — 07/2026",
+   "valor": 44700
+  },
+  {
+   "id": "d021",
+   "data": "2026-07-05",
+   "categoria": "Água",
+   "fornecedor": "EPAL",
+   "descricao": "Água — 07/2026",
+   "valor": 20500
+  },
+  {
+   "id": "d022",
+   "data": "2026-07-05",
+   "categoria": "Limpeza",
+   "fornecedor": "Brilho Total Serviços",
+   "descricao": "Limpeza — 07/2026",
+   "valor": 62100
+  },
+  {
+   "id": "d023",
+   "data": "2026-07-05",
+   "categoria": "Salários",
+   "fornecedor": "Folha de pessoal",
+   "descricao": "Salários — 07/2026",
+   "valor": 220000
+  },
+  {
+   "id": "d024",
+   "data": "2026-07-18",
+   "categoria": "Gerador",
+   "fornecedor": "Pumangol",
+   "descricao": "Gasóleo para o gerador",
+   "valor": 54700
+  },
+  {
+   "id": "d025",
+   "data": "2026-08-05",
+   "categoria": "Segurança",
+   "fornecedor": "Guarda Kalunga, Lda",
+   "descricao": "Segurança — 08/2026",
+   "valor": 192700
+  },
+  {
+   "id": "d026",
+   "data": "2026-08-05",
+   "categoria": "Energia",
+   "fornecedor": "ENDE",
+   "descricao": "Energia — 08/2026",
+   "valor": 49600
+  },
+  {
+   "id": "d027",
+   "data": "2026-08-05",
+   "categoria": "Água",
+   "fornecedor": "EPAL",
+   "descricao": "Água — 08/2026",
+   "valor": 21700
+  },
+  {
+   "id": "d028",
+   "data": "2026-08-05",
+   "categoria": "Limpeza",
+   "fornecedor": "Brilho Total Serviços",
+   "descricao": "Limpeza — 08/2026",
+   "valor": 62300
+  },
+  {
+   "id": "d029",
+   "data": "2026-08-05",
+   "categoria": "Salários",
+   "fornecedor": "Folha de pessoal",
+   "descricao": "Salários — 08/2026",
+   "valor": 208200
+  },
+  {
+   "id": "d030",
+   "data": "2026-08-18",
+   "categoria": "Gerador",
+   "fornecedor": "Pumangol",
+   "descricao": "Gasóleo para o gerador",
+   "valor": 34500
+  },
+  {
+   "id": "d031",
+   "data": "2026-09-05",
+   "categoria": "Segurança",
+   "fornecedor": "Guarda Kalunga, Lda",
+   "descricao": "Segurança — 09/2026",
+   "valor": 176200
+  },
+  {
+   "id": "d032",
+   "data": "2026-09-05",
+   "categoria": "Energia",
+   "fornecedor": "ENDE",
+   "descricao": "Energia — 09/2026",
+   "valor": 48400
+  },
+  {
+   "id": "d033",
+   "data": "2026-09-05",
+   "categoria": "Água",
+   "fornecedor": "EPAL",
+   "descricao": "Água — 09/2026",
+   "valor": 20100
+  },
+  {
+   "id": "d034",
+   "data": "2026-09-05",
+   "categoria": "Limpeza",
+   "fornecedor": "Brilho Total Serviços",
+   "descricao": "Limpeza — 09/2026",
+   "valor": 60800
+  },
+  {
+   "id": "d035",
+   "data": "2026-09-05",
+   "categoria": "Salários",
+   "fornecedor": "Folha de pessoal",
+   "descricao": "Salários — 09/2026",
+   "valor": 196900
+  },
+  {
+   "id": "d036",
+   "data": "2026-09-18",
+   "categoria": "Gerador",
+   "fornecedor": "Pumangol",
+   "descricao": "Gasóleo para o gerador",
+   "valor": 40100
+  },
+  {
+   "id": "d037",
+   "data": "2026-08-22",
+   "categoria": "Manutenção",
+   "fornecedor": "Elevadores Luanda",
+   "descricao": "Reparação do elevador do Bloco B",
+   "valor": 142500
+  }
+ ],
+ "funcionarios": [
+  {
+   "id": "f1",
+   "nome": "Manuel Tomás",
+   "funcao": "Porteiro",
+   "turno": "Diurno",
+   "telefone": "+244 923 441 210",
+   "salario": 76000,
+   "admissao": "2023-03-01",
+   "estado": "Ativo"
+  },
+  {
+   "id": "f2",
+   "nome": "Abel Katumbela",
+   "funcao": "Porteiro",
+   "turno": "Noturno",
+   "telefone": "+244 931 208 775",
+   "salario": 76000,
+   "admissao": "2024-07-15",
+   "estado": "Ativo"
+  },
+  {
+   "id": "f3",
+   "nome": "Joana Miguel",
+   "funcao": "Auxiliar de limpeza",
+   "turno": "Diurno",
+   "telefone": "+244 946 330 118",
+   "salario": 60000,
+   "admissao": "2022-11-02",
+   "estado": "Ativo"
+  },
+  {
+   "id": "f4",
+   "nome": "Pedro Canga",
+   "funcao": "Jardineiro",
+   "turno": "Diurno",
+   "telefone": "+244 912 776 540",
+   "salario": 56000,
+   "admissao": "2025-02-10",
+   "estado": "Férias"
+  },
+  {
+   "id": "f5",
+   "nome": "Silvano Dala",
+   "funcao": "Técnico de manutenção",
+   "turno": "Diurno",
+   "telefone": "+244 927 115 903",
+   "salario": 96000,
+   "admissao": "2021-06-01",
+   "estado": "Ativo"
+  }
+ ],
+ "ocorrencias": [
+  {
+   "id": "o1",
+   "titulo": "Infiltração no tecto da garagem",
+   "fracao": "B-3Esq",
+   "categoria": "Infraestrutura",
+   "prioridade": "Alta",
+   "estado": "Em curso",
+   "data": "2026-09-20",
+   "descricao": "Água a pingar sobre os lugares 12 e 13."
+  },
+  {
+   "id": "o2",
+   "titulo": "Ruído depois das 22h",
+   "fracao": "A-2Dto",
+   "categoria": "Convivência",
+   "prioridade": "Média",
+   "estado": "Aberta",
+   "data": "2026-09-24",
+   "descricao": "Queixa de vizinhos do 3.º andar."
+  },
+  {
+   "id": "o3",
+   "titulo": "Portão da entrada não fecha",
+   "fracao": "",
+   "categoria": "Segurança",
+   "prioridade": "Alta",
+   "estado": "Aberta",
+   "data": "2026-09-25",
+   "descricao": "Motor do portão falha com a corrente do gerador."
+  },
+  {
+   "id": "o4",
+   "titulo": "Lâmpadas fundidas na escada B",
+   "fracao": "",
+   "categoria": "Infraestrutura",
+   "prioridade": "Baixa",
+   "estado": "Resolvida",
+   "data": "2026-09-10",
+   "descricao": ""
+  },
+  {
+   "id": "o5",
+   "titulo": "Viatura estacionada no lugar errado",
+   "fracao": "A-4Esq",
+   "categoria": "Estacionamento",
+   "prioridade": "Baixa",
+   "estado": "Resolvida",
+   "data": "2026-09-02",
+   "descricao": ""
+  }
+ ],
+ "manutencao": [
+  {
+   "id": "k1",
+   "equipamento": "Gerador 150 kVA",
+   "tipo": "Preventiva",
+   "fornecedor": "Power Angola",
+   "dataPrevista": "2026-10-05",
+   "custo": 180000,
+   "estado": "Agendada"
+  },
+  {
+   "id": "k2",
+   "equipamento": "Elevador Bloco B",
+   "tipo": "Corretiva",
+   "fornecedor": "Elevadores Luanda",
+   "dataPrevista": "2026-08-22",
+   "custo": 285000,
+   "estado": "Concluída"
+  },
+  {
+   "id": "k3",
+   "equipamento": "Bomba de água / cisterna",
+   "tipo": "Preventiva",
+   "fornecedor": "Hidro Serviços",
+   "dataPrevista": "2026-09-15",
+   "custo": 65000,
+   "estado": "Atrasada"
+  },
+  {
+   "id": "k4",
+   "equipamento": "Portão automático",
+   "tipo": "Corretiva",
+   "fornecedor": "Portões & Cia",
+   "dataPrevista": "2026-09-29",
+   "custo": 90000,
+   "estado": "Agendada"
+  },
+  {
+   "id": "k5",
+   "equipamento": "Extintores",
+   "tipo": "Inspeção",
+   "fornecedor": "Bombeiros Certificados",
+   "dataPrevista": "2026-11-10",
+   "custo": 40000,
+   "estado": "Agendada"
+  }
+ ],
+ "documentos": [
+  {
+   "id": "doc1",
+   "nome": "Regulamento interno do condomínio",
+   "tipo": "Regulamento",
+   "data": "2025-12-15",
+   "notas": "Aprovado em assembleia geral.",
+   "visivel": "Sim"
+  },
+  {
+   "id": "doc2",
+   "nome": "Acta da Assembleia Geral — Janeiro 2026",
+   "tipo": "Acta",
+   "data": "2026-01-25",
+   "notas": "Orçamento anual e quotas aprovados.",
+   "visivel": "Sim"
+  },
+  {
+   "id": "doc3",
+   "nome": "Contrato de segurança — Guarda Kalunga",
+   "tipo": "Contrato",
+   "data": "2026-01-01",
+   "notas": "Válido até Dez/2026.",
+   "visivel": "Não"
+  },
+  {
+   "id": "doc4",
+   "nome": "Relatório de contas — 1.º semestre",
+   "tipo": "Relatório financeiro",
+   "data": "2026-07-10",
+   "notas": "",
+   "visivel": "Sim"
+  }
+ ],
+ "cameras": [
+  {
+   "id": "c1",
+   "nome": "CAM-01 Portão principal",
+   "local": "Entrada",
+   "gravador": "NVR-1 canal 1",
+   "estado": "Online",
+   "verificacao": "2026-09-25",
+   "notas": ""
+  },
+  {
+   "id": "c2",
+   "nome": "CAM-02 Garagem",
+   "local": "Cave",
+   "gravador": "NVR-1 canal 2",
+   "estado": "Online",
+   "verificacao": "2026-09-25",
+   "notas": ""
+  },
+  {
+   "id": "c3",
+   "nome": "CAM-03 Hall Bloco A",
+   "local": "Bloco A",
+   "gravador": "NVR-1 canal 3",
+   "estado": "Online",
+   "verificacao": "2026-09-25",
+   "notas": ""
+  },
+  {
+   "id": "c4",
+   "nome": "CAM-04 Hall Bloco B",
+   "local": "Bloco B",
+   "gravador": "NVR-1 canal 4",
+   "estado": "Offline",
+   "verificacao": "2026-09-23",
+   "notas": "Sem imagem desde o corte de energia."
+  },
+  {
+   "id": "c5",
+   "nome": "CAM-05 Muro traseiro",
+   "local": "Perímetro",
+   "gravador": "NVR-1 canal 5",
+   "estado": "Online",
+   "verificacao": "2026-09-25",
+   "notas": "Visão noturna fraca."
+  }
+ ],
+ "avisos": [
+  {
+   "id": "v1",
+   "titulo": "Corte de água programado",
+   "mensagem": "A EPAL informa corte no sábado, 27/09, das 8h às 14h. Encham os reservatórios.",
+   "destinatarios": "Todos",
+   "data": "2026-09-24",
+   "fixado": "Sim"
+  },
+  {
+   "id": "v2",
+   "titulo": "Assembleia geral extraordinária",
+   "mensagem": "Dia 11/10 às 17h, salão do Bloco A. Ordem de trabalhos: obras na garagem.",
+   "destinatarios": "Proprietários",
+   "data": "2026-09-20",
+   "fixado": "Sim"
+  },
+  {
+   "id": "v3",
+   "titulo": "Lembrete: quota de Setembro",
+   "mensagem": "As quotas vencem no dia 10 de cada mês. Referência de pagamento no recibo.",
+   "destinatarios": "Todos",
+   "data": "2026-09-01",
+   "fixado": "Não"
+  }
+ ]
+}

@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Administração · Kondo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 21V9l6-4v16M9 21V3l12 5v13M3 21h18M13 10h4M13 14h4M13 18h4"/></svg>
+      </div>
+      <div><b>Kondo</b><small id="condoName">Gestão de condomínios</small></div>
+    </div>
+    <nav class="nav" id="nav" aria-label="Módulos"></nav>
+    <div class="side-foot" id="sideFoot"></div>
+  </aside>
+  <main class="main">
+    <div class="banner" id="suspBanner" hidden style="border-color:var(--bad);background:var(--bad-soft)"><b>Assinatura suspensa.</b> O portal dos moradores está fechado e só é possível consultar dados. Regularize as faturas em Definições para voltar a fazer alterações.</div>
+    <div id="view"></div>
+  </main>
+</div>
+<div id="modalRoot"></div>
+
+<script>
+(() => {
+const COLS = ['config','moradores','pagamentos','despesas','funcionarios','ocorrencias','manutencao','documentos','cameras','avisos','comunicacoes','utilizadores','pedidos'];
+let condo = {estado:'Ativo', plano:'', limite:null};
+const D = Object.fromEntries(COLS.map(c => [c, []]));
+let me = null, view = 'painel', perfilId = null;
+const isAdmin = true;
+try { const h = location.hash.slice(1); if (h) view = h; } catch(e) {}
+
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const MESES_L = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const now = new Date();
+const curMes = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+const today = now.toISOString().slice(0,10);
+const nf = new Intl.NumberFormat('pt-PT', {maximumFractionDigits:0});
+const kz = v => nf.format(Math.round(+v || 0)) + ' Kz';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = s => s ? s.split('-').reverse().join('/') : '—';
+const fmtMes = m => { if (!m) return '—'; const [y,mm] = m.split('-'); return MESES[+mm-1] + ' ' + y; };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const cfg = () => D.config.find(c => c.id === 'geral') || {nome:'O meu condomínio', diaVencimento:10, inicio: curMes.slice(0,4)+'-01', plano:'Profissional'};
+const monthsBetween = (a, b) => { const out = []; let [y,m] = a.split('-').map(Number); const [by,bm] = b.split('-').map(Number); while (y < by || (y === by && m <= bm)) { out.push(y+'-'+String(m).padStart(2,'0')); m++; if (m>12){m=1;y++;} if (out.length>120) break; } return out; };
+
+/* ---------- Schemas ---------- */
+const opt = (...a) => a;
+const SCHEMA = {
+  moradores: { label:'Morador', title:'Moradores', sub:'Diretório de frações e responsáveis. Clique num morador para ver a ficha.',
+    fields:[
+      ['_s1','Identificação','section'],
+      ['nome','Nome completo','text',{req:1,full:1}],['bi','N.º do Bilhete de Identidade','text',{priv:1,ph:'000000000LA000'}],['nif','NIF','text',{priv:1}],
+      ['tipo','Tipo','select',opt('Proprietário','Inquilino')],['estado','Estado','select',opt('Ativo','Inativo','Mudou-se')],
+      ['_s2','Contactos','section'],
+      ['telefone','Telefone','tel',{ph:'+244 9__ ___ ___'}],['email','Email','email',{priv:1}],['emergencia','Contacto de emergência','text',{priv:1,full:1,ph:'Nome e telefone'}],
+      ['_s3','Fração e quota','section'],
+      ['fracao','Fração','text',{req:1,ph:'A-1Esq'}],['bloco','Bloco','text'],['tipologia','Tipologia','select',opt('T1','T2','T3','T4','T5','Loja')],['quota','Quota mensal (Kz)','money',{req:1}],['desde','Paga quotas desde','month'],
+      ['_s4','Agregado e viaturas','section'],
+      ['agregado','Pessoas no agregado','number'],['viaturas','Matrículas das viaturas','text',{ph:'LD-12-34-AB'}],
+      ['foto','Fotografia','file',{full:1,accept:'image/*'}],
+      ['observacoes','Observações internas (só administradores)','textarea',{priv:1,full:1}]],
+    cols:['fracao','nome','tipo','telefone','estado','quota'], sort:'fracao', filter:'estado' },
+  pagamentos: { label:'Pagamento', title:'Pagamentos', sub:'Recibos de quotas recebidas.',
+    fields:[['moradorId','Fração','morador',{req:1,full:1}],['mes','Mês de referência','month',{req:1}],['valor','Valor (Kz)','money',{req:1}],['metodo','Método','select',opt('Multicaixa Express','Transferência BAI','Transferência BFA','Transferência BIC','Depósito BIC','Numerário','Outro')],['data','Data do pagamento','date',{req:1}],['referencia','Referência / recibo','text',{full:1}]],
+    cols:['data','moradorId','mes','metodo','referencia','valor'], sort:'-data' },
+  despesas: { label:'Despesa', title:'Despesas', sub:'Tudo o que sai da conta do condomínio.',
+    fields:[['data','Data','date',{req:1}],['categoria','Categoria','select',opt('Segurança','Energia','Água','Limpeza','Salários','Gerador','Manutenção','Jardinagem','Administrativo','Outro')],['fornecedor','Fornecedor','text'],['valor','Valor (Kz)','money',{req:1}],['descricao','Descrição','text',{full:1}]],
+    cols:['data','categoria','fornecedor','descricao','valor'], sort:'-data', filter:'categoria' },
+  funcionarios: { label:'Funcionário', title:'Funcionários', sub:'Pessoal do condomínio e respetivos turnos.',
+    fields:[['nome','Nome','text',{req:1,full:1}],['funcao','Função','select',opt('Porteiro','Segurança','Auxiliar de limpeza','Jardineiro','Técnico de manutenção','Administrador','Outro')],['turno','Turno','select',opt('Diurno','Noturno','Rotativo')],['telefone','Telefone','tel'],['salario','Salário (Kz)','money'],['admissao','Data de admissão','date'],['estado','Estado','select',opt('Ativo','Férias','Baixa','Inativo')]],
+    cols:['nome','funcao','turno','telefone','estado','salario'], sort:'nome' },
+  ocorrencias: { label:'Ocorrência', title:'Ocorrências', sub:'Queixas, avarias e incidentes reportados.',
+    fields:[['titulo','Título','text',{req:1,full:1}],['fracao','Fração (opcional)','text'],['categoria','Categoria','select',opt('Infraestrutura','Segurança','Convivência','Estacionamento','Limpeza','Outro')],['prioridade','Prioridade','select',opt('Baixa','Média','Alta')],['estado','Estado','select',opt('Aberta','Em curso','Resolvida')],['data','Data','date',{req:1}],['descricao','Descrição','textarea',{full:1}]],
+    cols:['data','titulo','fracao','categoria','prioridade','estado'], sort:'-data', filter:'estado' },
+  manutencao: { label:'Manutenção', title:'Manutenção', sub:'Plano de manutenção preventiva e reparações.',
+    fields:[['equipamento','Equipamento / área','text',{req:1,full:1}],['tipo','Tipo','select',opt('Preventiva','Corretiva','Inspeção')],['estado','Estado','select',opt('Agendada','Em curso','Concluída','Atrasada')],['fornecedor','Fornecedor','text'],['dataPrevista','Data prevista','date'],['custo','Custo estimado (Kz)','money']],
+    cols:['dataPrevista','equipamento','tipo','fornecedor','estado','custo'], sort:'dataPrevista', filter:'estado' },
+  documentos: { label:'Documento', title:'Documentos', sub:'Actas, regulamentos, contratos e relatórios.',
+    fields:[['nome','Nome','text',{req:1,full:1}],['tipo','Tipo','select',opt('Acta','Regulamento','Contrato','Relatório financeiro','Orçamento','Outro')],['data','Data','date'],['visivel','Visível no portal dos moradores','select',opt('Sim','Não')],['ficheiro','Ficheiro (PDF ou imagem)','file',{full:1}],['notas','Notas','textarea',{full:1}]],
+    cols:['data','nome','tipo','visivel','ficheiro','notas'], sort:'-data', filter:'tipo' },
+  cameras: { label:'Câmara', title:'CCTV', sub:'Estado das câmaras e do gravador.',
+    fields:[['nome','Nome','text',{req:1,full:1}],['local','Local','text'],['gravador','Gravador / canal','text'],['estado','Estado','select',opt('Online','Offline','Em manutenção')],['verificacao','Última verificação','date'],['notas','Notas','textarea',{full:1}]],
+    sort:'nome', cards:1 },
+  avisos: { label:'Aviso', title:'Comunicação', sub:'Avisos e comunicados aos moradores.',
+    fields:[['titulo','Título','text',{req:1,full:1}],['mensagem','Mensagem','textarea',{req:1,full:1}],['destinatarios','Destinatários','select',opt('Todos','Proprietários','Inquilinos','Bloco A','Bloco B')],['data','Data','date',{req:1}],['fixado','Fixar no painel','select',opt('Não','Sim')]],
+    sort:'-data', cards:1 },
+};
+const BADGE = {
+  estado:{'Aberta':'bad','Em curso':'warn','Resolvida':'ok','Agendada':'info','Concluída':'ok','Atrasada':'bad','Ativo':'ok','Férias':'warn','Baixa':'warn','Inativo':'','Mudou-se':'','Online':'ok','Offline':'bad','Em manutenção':'warn'},
+  prioridade:{'Alta':'bad','Média':'warn','Baixa':''},
+  tipo:{'Proprietário':'info','Inquilino':''},
+  acao:{'Criou':'ok','Alterou':'info','Arquivou':'warn','Eliminou':'bad'},
+};
+
+/* ---------- Derived data ---------- */
+const moradorById = id => D.moradores.find(m => m.id === id);
+const isAtivo = m => !m.estado || m.estado === 'Ativo';
+const ativos = () => D.moradores.filter(isAtivo);
+const PRIV = SCHEMA.moradores.fields.filter(f => f[3] && f[3].priv).map(f => f[0]);
+const withPriv = m => ({...m});
+const initials = n => String(n||'?').split(/\s+/).filter(Boolean).map(w => w[0]).filter((c,i,a) => i===0 || i===a.length-1).join('').toUpperCase();
+const avatar = (m, size=40) => m.fotoId ? `<img class="av" src="/ficheiros/${esc(m.fotoId)}" alt="" style="width:${size}px;height:${size}px">` : `<span class="av" style="width:${size}px;height:${size}px;font-size:${Math.round(size*.38)}px" aria-hidden="true">${esc(initials(m.nome))}</span>`;
+const canWrite = col => isAdmin || col === 'ocorrencias';
+const fracaoLabel = id => { const m = moradorById(id); return m ? m.fracao + ' · ' + m.nome : '(fração removida)'; };
+function paidMap() { const map = {}; for (const p of D.pagamentos) { (map[p.moradorId] ||= {})[p.mes] = p; } return map; }
+function dividas() {
+  const pm = paidMap(), c = cfg(), dia = +c.diaVencimento || 10;
+  const vencido = now.getDate() > dia;
+  return ativos().map(m => {
+    const start = (m.desde && m.desde > (c.inicio||'')) ? m.desde : (c.inicio || curMes);
+    const meses = monthsBetween(start, curMes).filter(mm => !(pm[m.id]||{})[mm]);
+    const atraso = meses.filter(mm => mm < curMes || (mm === curMes && vencido));
+    const last = D.pagamentos.filter(p => p.moradorId === m.id).sort((a,b) => (b.data||'').localeCompare(a.data||''))[0];
+    return {m, meses: atraso, total: atraso.length * (+m.quota||0), last};
+  }).filter(x => x.meses.length).sort((a,b) => b.total - a.total);
+}
+const sum = (arr, k) => arr.reduce((s, x) => s + (+x[k] || 0), 0);
+
+/* ---------- Icons / nav ---------- */
+const I = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const NAV = [
+  ['Visão geral'],
+  ['painel','Painel', I('<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>')],
+  ['Finanças'],
+  ['quotas','Quotas', I('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h2M14 14h2M8 18h2"/>')],
+  ['pagamentos','Pagamentos', I('<rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M6 15h4"/>')],
+  ['confirmar','A confirmar', I('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>'), () => D.comunicacoes.filter(c => c.estado === 'Pendente').length],
+  ['relatorios','Relatórios', I('<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>')],
+  ['dividas','Dívidas', I('<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>'), () => dividas().length],
+  ['despesas','Despesas', I('<path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>')],
+  ['Pessoas'],
+  ['moradores','Moradores', I('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>')],
+  ['funcionarios','Funcionários', I('<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>')],
+  ['avisos','Comunicação', I('<path d="M3 11l18-8v18l-18-8zM7 12v5a2 2 0 0 0 4 0v-3"/>')],
+  ['Operação'],
+  ['ocorrencias','Ocorrências', I('<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/>'), () => D.ocorrencias.filter(o => o.estado !== 'Resolvida').length],
+  ['manutencao','Manutenção', I('<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>')],
+  ['cameras','CCTV', I('<path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>'), () => D.cameras.filter(c => c.estado !== 'Online').length],
+  ['documentos','Documentos', I('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/>')],
+  ['Administração'],
+  ['admin','Gestão de moradores', I('<path d="M12 2l8 3v6c0 5-3.4 9.3-8 11-4.6-1.7-8-6-8-11V5z"/><circle cx="12" cy="10" r="2.5"/><path d="M8 16.5c.8-1.6 2.3-2.5 4-2.5s3.2.9 4 2.5"/>')],
+  ['contas','Contas de acesso', I('<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 15v2"/>'), () => D.pedidos.length],
+  ['registo','Registo de alterações', I('<path d="M12 8v4l3 2"/><path d="M3.05 11a9 9 0 1 1 .5 4M3 4v5h5"/>')],
+  ['Conta'],
+  ['definicoes','Definições', I('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>')],
+];
+function renderNav() {
+  document.getElementById('nav').innerHTML = NAV.map(n => {
+    if (n.length === 1) return `<div class="nav-group">${n[0]}</div>`;
+    const c = n[3] ? n[3]() : 0;
+    return `<button type="button" data-go="${n[0]}" ${view===n[0]?'aria-current="page"':''}>${n[2]}<span>${n[1]}</span>${c?`<span class="count">${c}</span>`:''}</button>`;
+  }).join('');
+  const c = cfg();
+  document.getElementById('condoName').textContent = c.nome;
+  document.getElementById('sideFoot').innerHTML = `<span style="color:var(--side-ink)">${esc(me ? me.nome : '')}</span><br>${esc(me ? me.email : '')}<br>Plano ${esc(c.plano||'—')} · ${ativos().length} frações<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="btn small" data-senha style="background:transparent;color:var(--side-ink);border-color:var(--side-active)">Palavra-passe</button><button class="btn small" data-sair style="background:transparent;color:var(--side-ink);border-color:var(--side-active)">Sair</button></div>`;
+}
+document.getElementById('nav').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
+function go(v) { view = v; try { history.replaceState(null, '', '#' + v); } catch(e) {} render(); document.querySelector('.main').scrollIntoView({block:'start'}); }
+
+/* ---------- Render ---------- */
+const $view = document.getElementById('view');
+const header = (t, s, actions='') => `<div class="top"><div><h1>${t}</h1><p>${s}</p></div><div class="actions">${actions}</div></div>`;
+const pill = (field, v) => v ? `<span class="pill ${(BADGE[field]||{})[v] ?? ''}">${esc(v)}</span>` : '<span class="dim">—</span>';
+const tableState = {};
+
+function render() {
+  renderNav();
+  document.getElementById('suspBanner').hidden = condo.estado === 'Ativo';
+  const r = ({painel:renderPainel, quotas:renderQuotas, dividas:renderDividas, definicoes:renderDefinicoes, admin:renderAdmin, contas:renderContas, confirmar:renderConfirmar, relatorios:renderRelatorios, registo:renderRegisto, perfil:renderPerfil})[view];
+  if (r) r(); else if (SCHEMA[view]) (SCHEMA[view].cards ? renderCards : renderTable)(view); else { view = 'painel'; renderPainel(); }
+}
+
+function renderPainel() {
+  const c = cfg();
+  const esperado = sum(ativos(), 'quota'); const nAt = ativos().length;
+  const pagosMes = D.pagamentos.filter(p => p.mes === curMes);
+  const recebido = sum(pagosMes, 'valor');
+  const taxa = esperado ? Math.round(recebido / esperado * 100) : 0;
+  const dv = dividas(); const divTotal = sum(dv, 'total');
+  const despMes = sum(D.despesas.filter(d => (d.data||'').startsWith(curMes)), 'valor');
+  const saldo = sum(D.pagamentos, 'valor') - sum(D.despesas, 'valor');
+  const abertas = D.ocorrencias.filter(o => o.estado !== 'Resolvida');
+  const offline = D.cameras.filter(x => x.estado !== 'Online');
+  const atrasadas = D.manutencao.filter(x => x.estado === 'Atrasada' || (x.estado === 'Agendada' && x.dataPrevista && x.dataPrevista < today));
+  const [y, m] = curMes.split('-').map(Number);
+  $view.innerHTML = header(esc(c.nome), `${MESES_L[m-1]} de ${y} · ${D.moradores.length} frações · vencimento ao dia ${c.diaVencimento||10}`,
+    `<button class="btn" data-act="novo" data-col="ocorrencias">Nova ocorrência</button>${isAdmin ? '<button class="btn primary" data-act="novo" data-col="pagamentos">Registar pagamento</button>' : ''}`) +
+  `<div class="kpis">
+    <div class="kpi"><span class="lbl">Quotas de ${MESES[m-1]}</span><span class="val">${kz(recebido)}</span><span class="sub">${taxa}% de ${kz(esperado)} · ${pagosMes.length}/${nAt} frações</span><span class="meter"><i style="width:${Math.min(taxa,100)}%"></i></span></div>
+    <div class="kpi ${divTotal?'alert':''}"><span class="lbl">Dívida em atraso</span><span class="val">${kz(divTotal)}</span><span class="sub">${dv.length} frações com quotas por pagar</span></div>
+    <div class="kpi"><span class="lbl">Despesas de ${MESES[m-1]}</span><span class="val">${kz(despMes)}</span><span class="sub">${D.despesas.filter(d => (d.data||'').startsWith(curMes)).length} lançamentos</span></div>
+    <div class="kpi ${saldo<0?'alert':''}"><span class="lbl">Saldo acumulado</span><span class="val">${kz(saldo)}</span><span class="sub">Receitas menos despesas registadas</span></div>
+  </div>
+  <div class="grid2">
+    <section class="panel"><h2>Receitas e despesas <span class="legend"><span><i style="background:var(--bar-in)"></i>Quotas recebidas</span><span><i style="background:var(--bar-out)"></i>Despesas</span></span></h2>${chart()}</section>
+    <section class="panel"><h2>Maiores devedores <small><button class="btn small" data-go2="dividas">Ver todos</button></small></h2>
+      ${dv.length ? `<ul class="list">${dv.slice(0,5).map(x => `<li><span><b>${esc(x.m.fracao)}</b> ${esc(x.m.nome)}<br><span class="meta">${x.meses.length} ${x.meses.length>1?'meses':'mês'} · desde ${fmtMes(x.meses[0])}</span></span><span class="num" style="color:var(--bad)">${kz(x.total)}</span></li>`).join('')}</ul>` : '<p class="empty">Todas as quotas estão em dia.</p>'}
+    </section>
+  </div>
+  <div class="grid3">
+    <section class="panel"><h2>Ocorrências em aberto <small>${abertas.length}</small></h2>
+      ${abertas.length ? `<ul class="list">${abertas.slice(0,5).map(o => `<li class="click" data-edit="ocorrencias:${o.id}" style="cursor:pointer"><span>${esc(o.titulo)}<br><span class="meta">${fmtDate(o.data)}${o.fracao?' · '+esc(o.fracao):''}</span></span>${pill('prioridade', o.prioridade)}</li>`).join('')}</ul>` : '<p class="empty">Sem ocorrências em aberto.</p>'}</section>
+    <section class="panel"><h2>Avisos fixados</h2>
+      ${D.avisos.filter(a => a.fixado === 'Sim').length ? `<ul class="list">${D.avisos.filter(a => a.fixado === 'Sim').map(a => `<li data-edit="avisos:${a.id}" style="cursor:pointer"><span>${esc(a.titulo)}<br><span class="meta">${fmtDate(a.data)} · ${esc(a.destinatarios)}</span></span></li>`).join('')}</ul>` : '<p class="empty">Nenhum aviso fixado.</p>'}</section>
+    <section class="panel"><h2>Operação</h2><ul class="list">
+      <li><span>Câmaras CCTV</span>${offline.length ? `<span class="pill bad">${offline.length} offline</span>` : `<span class="pill ok">${D.cameras.length} online</span>`}</li>
+      <li><span>Manutenções atrasadas</span>${atrasadas.length ? `<span class="pill bad">${atrasadas.length}</span>` : '<span class="pill ok">0</span>'}</li>
+      <li><span>Próxima manutenção</span><span class="meta">${(() => { const n = D.manutencao.filter(x => x.estado==='Agendada' && x.dataPrevista >= today).sort((a,b)=>a.dataPrevista.localeCompare(b.dataPrevista))[0]; return n ? esc(n.equipamento)+' · '+fmtDate(n.dataPrevista) : '—'; })()}</span></li>
+      <li><span>Funcionários ativos</span><span class="num">${D.funcionarios.filter(f => f.estado==='Ativo').length} / ${D.funcionarios.length}</span></li>
+    </ul></section>
+  </div>`;
+}
+
+function chart() {
+  const months = []; let [y, m] = curMes.split('-').map(Number);
+  for (let i = 5; i >= 0; i--) { let mm = m - i, yy = y; while (mm < 1) { mm += 12; yy--; } months.push(yy + '-' + String(mm).padStart(2,'0')); }
+  const inc = months.map(k => sum(D.pagamentos.filter(p => (p.data||'').startsWith(k)), 'valor'));
+  const out = months.map(k => sum(D.despesas.filter(p => (p.data||'').startsWith(k)), 'valor'));
+  const max = Math.max(1, ...inc, ...out);
+  const step = Math.pow(10, Math.floor(Math.log10(max))); const top = Math.ceil(max / step) * step;
+  const W = 600, H = 240, L = 58, B = 26, T = 10, ch = H - B - T, gw = (W - L - 8) / 6, bw = Math.min(26, gw / 3);
+  const yv = v => T + ch - v / top * ch;
+  const short = v => v >= 1e6 ? (v/1e6).toLocaleString('pt-PT',{maximumFractionDigits:1}) + ' M' : v >= 1e3 ? Math.round(v/1e3) + ' mil' : v;
+  let g = '';
+  for (let i = 0; i <= 4; i++) { const v = top * i / 4, yy = yv(v); g += `<line x1="${L}" x2="${W-4}" y1="${yy}" y2="${yy}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${yy+4}" text-anchor="end">${short(v)}</text>`; }
+  months.forEach((k, i) => {
+    const cx = L + gw * i + gw / 2;
+    g += `<rect x="${cx-bw-2}" y="${yv(inc[i])}" width="${bw}" height="${ch - (yv(inc[i]) - T)}" rx="3" fill="var(--bar-in)"><title>Quotas ${fmtMes(k)}: ${kz(inc[i])}</title></rect>`;
+    g += `<rect x="${cx+2}" y="${yv(out[i])}" width="${bw}" height="${ch - (yv(out[i]) - T)}" rx="3" fill="var(--bar-out)"><title>Despesas ${fmtMes(k)}: ${kz(out[i])}</title></rect>`;
+    g += `<text x="${cx}" y="${H-8}" text-anchor="middle" ${k===curMes?'style="fill:var(--ink);font-weight:600"':''}>${MESES[+k.slice(5)-1]}</text>`;
+  });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Quotas recebidas e despesas nos últimos 6 meses">${g}</svg>`;
+}
+
+function renderQuotas() {
+  const c = cfg(); const pm = paidMap();
+  const meses = monthsBetween(c.inicio || curMes, curMes).slice(-12);
+  const dia = +c.diaVencimento || 10, vencido = now.getDate() > dia;
+  const mor = [...ativos()].sort((a,b) => (a.fracao||'').localeCompare(b.fracao||''));
+  const tot = meses.map(mm => sum(D.pagamentos.filter(p => p.mes === mm), 'valor'));
+  $view.innerHTML = header('Quotas', `Mapa de pagamentos por fração. Clique num mês por pagar para registar o recibo.`,
+    isAdmin ? `<button class="btn primary" data-act="novo" data-col="pagamentos">Registar pagamento</button>` : "") +
+  `<div class="toolbar"><span class="legend"><span><i style="background:var(--ok-soft);border:1px solid var(--ok)"></i>Pago</span><span><i style="background:var(--warn-soft);border:1px dashed var(--warn)"></i>Por vencer (até dia ${dia})</span><span><i style="background:var(--bad-soft);border:1px solid var(--bad)"></i>Em atraso</span></span></div>
+  <div class="tablewrap"><table class="qgrid"><thead><tr><th>Fração</th><th class="num">Quota</th>${meses.map(mm => `<th>${fmtMes(mm)}</th>`).join('')}</tr></thead><tbody>
+  ${mor.map(m => `<tr><td><b>${esc(m.fracao)}</b> <span class="dim">${esc(m.nome)}</span></td><td class="num">${nf.format(+m.quota||0)}</td>${meses.map(mm => {
+      const p = (pm[m.id]||{})[mm];
+      if (m.desde && mm < m.desde) return `<td><span class="cell na">·</span></td>`;
+      if (p) return `<td><button class="cell pago" data-edit="pagamentos:${p.id}" title="Pago em ${fmtDate(p.data)} · ${esc(p.metodo)}">✓</button></td>`;
+      const late = mm < curMes || (mm === curMes && vencido);
+      return `<td><button class="cell ${late?'atr':'pend'}" data-pay="${m.id}|${mm}" title="${late?'Em atraso':'Por vencer'} — clique para registar">${late?'!':'…'}</button></td>`;
+    }).join('')}</tr>`).join('')}
+  </tbody><tfoot><tr><td><b>Recebido</b></td><td></td>${tot.map(t => `<td class="num" style="font-size:12px">${t?Math.round(t/1000)+' mil':'—'}</td>`).join('')}</tr></tfoot></table></div>`;
+}
+
+function renderDividas() {
+  const dv = dividas();
+  $view.innerHTML = header('Dívidas', `Quotas vencidas e não pagas. Total em atraso: <b>${kz(sum(dv,'total'))}</b>.`) +
+  (dv.length ? `<div class="tablewrap"><table><thead><tr><th>Fração</th><th>Responsável</th><th>Telefone</th><th>Meses em atraso</th><th>Último pagamento</th><th class="num">Valor</th><th></th></tr></thead><tbody>
+  ${dv.map(x => `<tr><td><b>${esc(x.m.fracao)}</b></td><td>${esc(x.m.nome)}</td><td class="mono">${esc(x.m.telefone)}</td><td>${x.meses.map(fmtMes).join(', ')} <span class="pill ${x.meses.length>=3?'bad':'warn'}">${x.meses.length}</span></td><td class="dim">${x.last ? fmtDate(x.last.data) : 'Nunca'}</td><td class="num" style="color:var(--bad)">${kz(x.total)}</td><td><button class="btn small" data-cobrar="${x.m.id}">Mensagem de cobrança</button></td></tr>`).join('')}
+  </tbody></table></div>` : '<div class="panel"><p class="empty">Nenhuma fração com quotas em atraso.</p></div>');
+}
+
+function sortRows(rows, s) { if (!s) return rows; const d = s[0]==='-' ? -1 : 1, k = s.replace('-',''); return [...rows].sort((a,b) => String(a[k]??'').localeCompare(String(b[k]??''), 'pt', {numeric:true}) * d); }
+function cellFor(col, f, r) {
+  const v = r[f[0]], t = f[2];
+  if (f[0] === 'moradorId') return esc(fracaoLabel(v));
+  if (t === 'money') return nf.format(+v || 0);
+  if (t === 'date') return `<span class="dim">${fmtDate(v)}</span>`;
+  if (t === 'month') return fmtMes(v);
+  if (t === 'file') return r.ficheiroId ? `<a href="/ficheiros/${esc(r.ficheiroId)}" target="_blank" rel="noopener" data-stop>${esc(r.ficheiroNome || 'Abrir')}</a>` : '<span class="dim">—</span>';
+  if (BADGE[f[0]]) return pill(f[0], v);
+  if (f[0] === 'notas' || f[0] === 'descricao') return `<span class="dim">${esc(v || '')}</span>`;
+  return esc(v) || '<span class="dim">—</span>';
+}
+function renderTable(col) {
+  const S = SCHEMA[col]; const st = tableState[col] ||= {q:'', f:''};
+  const fmap = Object.fromEntries(S.fields.map(f => [f[0], f]));
+  let rows = D[col];
+  if (st.q) { const q = st.q.toLowerCase(); rows = rows.filter(r => Object.entries(r).some(([k,v]) => String(k==='moradorId'?fracaoLabel(v):v).toLowerCase().includes(q))); }
+  if (st.f && S.filter) rows = rows.filter(r => r[S.filter] === st.f);
+  rows = sortRows(rows, S.sort);
+  const moneyCol = S.cols.find(c => fmap[c][2] === 'money');
+  const filt = S.filter ? `<select class="filter" id="flt-${col}" aria-label="Filtrar"><option value="">Todos: ${esc(fmap[S.filter][1].toLowerCase())}</option>${fmap[S.filter][3].map(o => `<option ${st.f===o?'selected':''}>${esc(o)}</option>`).join('')}</select>` : '';
+  $view.innerHTML = header(S.title, S.sub, addBtn(col)) +
+    `<div class="toolbar"><input class="search" id="q-${col}" type="search" placeholder="Pesquisar…" value="${esc(st.q)}" aria-label="Pesquisar">${filt}<span class="dim" style="font-size:13px">${rows.length} registo${rows.length===1?'':'s'}${moneyCol ? ' · total ' + kz(sum(rows, moneyCol)) : ''}</span><button class="btn small" id="csv-${col}" style="margin-left:auto">Exportar CSV</button></div>
+    <div class="tablewrap"><table><thead><tr>${S.cols.map(c => `<th class="${fmap[c][2]==='money'?'num':''}">${esc(fmap[c][1].replace(/ \(.*\)/,''))}</th>`).join('')}${col==='pagamentos'?'<th></th>':''}</tr></thead><tbody>
+    ${rows.length ? rows.map(r => `<tr class="click" ${col==="moradores" ? `data-perfil="${r.id}"` : `data-edit="${col}:${r.id}"`} tabindex="0">${S.cols.map(c => `<td class="${fmap[c][2]==='money'?'num':''}">${cellFor(col, fmap[c], r)}</td>`).join('')}${col==='pagamentos'?`<td><a href="/recibo/${esc(r.id)}" target="_blank" rel="noopener" data-stop>Recibo</a></td>`:''}</tr>`).join('') : `<tr><td colspan="${S.cols.length}" class="empty" style="padding:24px 14px">Sem registos${st.q||st.f?' para este filtro':''}.</td></tr>`}
+    </tbody></table></div>`;
+  const q = document.getElementById('q-' + col);
+  q.addEventListener('input', () => { st.q = q.value; const pos = q.selectionStart; renderTable(col); const n = document.getElementById('q-' + col); n.focus(); n.setSelectionRange(pos, pos); });
+  const fl = document.getElementById('flt-' + col); if (fl) fl.addEventListener('change', () => { st.f = fl.value; renderTable(col); });
+  document.getElementById('csv-' + col).addEventListener('click', () => exportCsv(S.title.toLowerCase().replace(/\s+/g, '-'), S.fields.filter(f => f[2] !== 'section' && f[2] !== 'file'), rows));
+}
+
+function renderCards(col) {
+  const S = SCHEMA[col]; const rows = sortRows(D[col], S.sort);
+  let body;
+  if (col === 'cameras') {
+    const off = rows.filter(r => r.estado !== 'Online').length;
+    body = `<p class="dim" style="margin:-8px 0 14px;font-size:13px">${rows.length - off} de ${rows.length} câmaras online. As imagens em direto ficam no gravador (NVR); aqui regista-se o estado e as verificações diárias.</p><div class="cards">${rows.map(r => `<button class="card" data-edit="cameras:${r.id}">
+      <div class="cam-screen"><span class="rec"><span class="dot ${r.estado==='Online'?'':'off'}"></span>${esc(r.estado)}</span>${r.estado==='Online'?esc(r.gravador||''):'SEM SINAL'}</div>
+      <h3>${esc(r.nome)}</h3><p>${esc(r.notas || r.local || '')}</p><div class="row"><span>${esc(r.local||'')}</span><span>Verificada ${fmtDate(r.verificacao)}</span></div></button>`).join('')}</div>`;
+  } else {
+    body = `<div class="cards">${rows.map(r => `<button class="card" data-edit="avisos:${r.id}">
+      <div class="row" style="margin:0;padding:0"><span>${fmtDate(r.data)} · ${esc(r.destinatarios)}</span>${r.fixado==='Sim'?'<span class="pill info">Fixado</span>':''}</div>
+      <h3>${esc(r.titulo)}</h3><p>${esc(r.mensagem)}</p></button>`).join('')}</div>`;
+  }
+  $view.innerHTML = header(S.title, S.sub, addBtn(col)) + (rows.length ? body : '<div class="panel"><p class="empty">Sem registos.</p></div>');
+}
+
+/* ---------- Administração ---------- */
+const addBtn = col => canWrite(col) ? `<button class="btn primary" data-act="novo" data-col="${col}">${col==='moradores' ? 'Cadastrar morador' : 'Adicionar ' + SCHEMA[col].label.toLowerCase()}</button>` : '';
+const restrito = (t, s) => header(t, s) + `<div class="panel"><p class="empty" style="max-width:60ch">Esta área é reservada aos administradores do condomínio. Peça ao responsável da conta que lhe dê acesso de <b>Editor</b> através do menu Partilhar.</p></div>`;
+const adminState = {q:'', f:''};
+const incompleto = m => !m.telefone || !m.bi || !m.email;
+
+function renderAdmin() {
+  if (!isAdmin) { $view.innerHTML = restrito('Gestão de moradores', 'Cadastro e manutenção dos perfis dos moradores.'); return; }
+  const all = D.moradores.map(withPriv);
+  const dv = Object.fromEntries(dividas().map(x => [x.m.id, x.total]));
+  let rows = all;
+  if (adminState.q) { const q = adminState.q.toLowerCase(); rows = rows.filter(m => ['nome','fracao','telefone','email','bi','viaturas'].some(k => String(m[k]||'').toLowerCase().includes(q))); }
+  if (adminState.f === 'Incompleto') rows = rows.filter(incompleto);
+  else if (adminState.f) rows = rows.filter(m => (m.estado || 'Ativo') === adminState.f);
+  rows = sortRows(rows, 'fracao');
+  const nAt = all.filter(isAtivo).length, nProp = all.filter(m => isAtivo(m) && m.tipo === 'Proprietário').length, nInc = all.filter(incompleto).length;
+  $view.innerHTML = header('Gestão de moradores', 'Cadastre, altere ou elimine os perfis dos moradores. Os dados pessoais (BI, NIF, email, contacto de emergência e observações) só são visíveis para administradores.', addBtn('moradores')) +
+  `<div class="kpis">
+    <div class="kpi"><span class="lbl">Moradores ativos</span><span class="val">${nAt}</span><span class="sub">${all.length - nAt} inativos ou mudaram-se</span></div>
+    <div class="kpi"><span class="lbl">Proprietários</span><span class="val">${nProp}</span><span class="sub">${nAt - nProp} inquilinos</span></div>
+    <div class="kpi ${nInc?'alert':''}"><span class="lbl">Perfis incompletos</span><span class="val">${nInc}</span><span class="sub">Sem telefone, BI ou email</span></div>
+    <div class="kpi"><span class="lbl">Pessoas residentes</span><span class="val">${sum(all.filter(isAtivo), 'agregado') || '—'}</span><span class="sub">Soma dos agregados declarados</span></div>
+  </div>
+  <div class="toolbar"><input class="search" id="q-admin" type="search" placeholder="Pesquisar nome, fração, BI, matrícula…" value="${esc(adminState.q)}" aria-label="Pesquisar moradores">
+    <select class="filter" id="flt-admin" aria-label="Filtrar por estado"><option value="">Todos os estados</option>${['Ativo','Inativo','Mudou-se','Incompleto'].map(o => `<option value="${o}" ${adminState.f===o?'selected':''}>${o==='Incompleto'?'Perfil incompleto':o}</option>`).join('')}</select>
+    <span class="dim" style="font-size:13px">${rows.length} morador${rows.length===1?'':'es'}</span></div>
+  <div class="tablewrap"><table><thead><tr><th>Morador</th><th>Fração</th><th>Tipo</th><th>Contactos</th><th>BI</th><th>Estado</th><th>Portal</th><th class="num">Dívida</th><th style="text-align:right">Ações</th></tr></thead><tbody>
+  ${rows.length ? rows.map(m => `<tr class="click" data-perfil="${m.id}" tabindex="0">
+    <td><span class="who">${avatar(m, 34)}<span><b>${esc(m.nome)}</b>${incompleto(m) ? '<br><span class="pill warn" style="margin-top:2px">Incompleto</span>' : ''}</span></span></td>
+    <td><b>${esc(m.fracao)}</b> <span class="dim">${esc(m.tipologia||'')}</span></td><td>${pill('tipo', m.tipo)}</td>
+    <td class="mono" style="font-size:12px">${esc(m.telefone||'—')}<br><span class="dim">${esc(m.email||'')}</span></td>
+    <td class="mono" style="font-size:12px">${esc(m.bi||'—')}</td><td>${pill('estado', m.estado||'Ativo')}</td><td>${acessoCell(m)}</td>
+    <td class="num" style="${dv[m.id]?'color:var(--bad)':''}">${dv[m.id] ? nf.format(dv[m.id]) : '—'}</td>
+    <td><div class="rowacts"><button class="btn small" data-edit="moradores:${m.id}">Editar</button><button class="btn small danger" data-del="${m.id}">Eliminar</button></div></td></tr>`).join('')
+    : `<tr><td colspan="9" class="empty" style="padding:24px 14px">Nenhum morador encontrado.</td></tr>`}
+  </tbody></table></div>`;
+  const q = document.getElementById('q-admin');
+  q.addEventListener('input', () => { adminState.q = q.value; const pos = q.selectionStart; renderAdmin(); const n = document.getElementById('q-admin'); n.focus(); n.setSelectionRange(pos, pos); });
+  document.getElementById('flt-admin').addEventListener('change', e => { adminState.f = e.target.value; renderAdmin(); });
+}
+
+function renderPerfil() {
+  const base = moradorById(perfilId);
+  if (!base) { view = isAdmin ? 'admin' : 'moradores'; return render(); }
+  const m = withPriv(base);
+  const pags = D.pagamentos.filter(p => p.moradorId === m.id).sort((a,b) => (b.mes||'').localeCompare(a.mes||''));
+  const dv = dividas().find(x => x.m.id === m.id);
+  const ocs = D.ocorrencias.filter(o => o.fracao && o.fracao === m.fracao).sort((a,b) => (b.data||'').localeCompare(a.data||''));
+  const priv = v => isAdmin ? (esc(v) || '<span class="dim">Não indicado</span>') : '<span class="dim">Reservado a administradores</span>';
+  const val = v => esc(v) || '<span class="dim">Não indicado</span>';
+  $view.innerHTML = `<div class="toolbar"><button class="btn small" data-go2="${isAdmin?'admin':'moradores'}">← ${isAdmin?'Gestão de moradores':'Moradores'}</button></div>
+  <section class="panel" style="margin-bottom:16px"><div class="profile-head">${avatar(m, 72)}
+    <div style="flex:1;min-width:200px"><h1 style="font:600 24px/1.2 var(--display);margin:0;letter-spacing:-.02em">${esc(m.nome)}</h1>
+      <p class="dim" style="margin:4px 0 8px">Fração <b style="color:var(--ink)">${esc(m.fracao)}</b> · Bloco ${esc(m.bloco||'—')} · ${esc(m.tipologia||'')} · quota ${kz(m.quota)}</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${pill('tipo', m.tipo)}${pill('estado', m.estado||'Ativo')}${dv ? `<span class="pill bad">Dívida ${kz(dv.total)}</span>` : '<span class="pill ok">Quotas em dia</span>'}</div></div>
+    ${isAdmin ? `<div class="actions"><button class="btn" data-edit="moradores:${m.id}">Editar perfil</button><button class="btn danger" data-del="${m.id}">Eliminar</button></div>` : ''}</div></section>
+  <div class="grid2">
+    <section class="panel"><h2>Dados do morador</h2><dl class="dl">
+      <dt>Telefone</dt><dd class="mono">${val(m.telefone)}</dd>
+      <dt>Email</dt><dd>${priv(m.email)}</dd>
+      <dt>N.º do BI</dt><dd class="mono">${priv(m.bi)}</dd>
+      <dt>NIF</dt><dd class="mono">${priv(m.nif)}</dd>
+      <dt>Contacto de emergência</dt><dd>${priv(m.emergencia)}</dd>
+      <dt>Pessoas no agregado</dt><dd>${val(m.agregado)}</dd>
+      <dt>Viaturas</dt><dd class="mono">${val(m.viaturas)}</dd>
+      <dt>Paga quotas desde</dt><dd>${fmtMes(m.desde)}</dd>
+      <dt>Portal do morador</dt><dd>${(() => { const u = contaDe(m.id); return u ? `${esc(u.email)}<br><span class="dim" style="font-size:12px">${u.ativo ? 'Ativo' : 'Desativado'} · última entrada: ${fmtDT(u.ultimo_login)}</span>` : acessoCell(m); })()}</dd>
+      ${isAdmin && m.observacoes ? `<dt>Observações</dt><dd>${esc(m.observacoes)}</dd>` : ''}
+    </dl></section>
+    <section class="panel"><h2>Conta corrente <small>${pags.length} pagamentos</small></h2>
+      ${dv ? `<p style="margin:0 0 10px;font-size:14px">Em atraso: ${dv.meses.map(x => `<span class="pill bad">${fmtMes(x)}</span>`).join(' ')}</p>` : ''}
+      ${pags.length ? `<ul class="list">${pags.slice(0,8).map(p => `<li data-edit="pagamentos:${p.id}" style="cursor:pointer"><span>${fmtMes(p.mes)}<br><span class="meta">${fmtDate(p.data)} · ${esc(p.metodo||'')}</span></span><span style="display:flex;gap:10px;align-items:center"><a href="/recibo/${esc(p.id)}" target="_blank" rel="noopener" data-stop style="font-size:13px">Recibo</a><span class="num">${kz(p.valor)}</span></span></li>`).join('')}</ul>` : '<p class="empty">Sem pagamentos registados.</p>'}
+      ${isAdmin ? `<button class="btn small" style="margin-top:10px" data-act="novo" data-col="pagamentos" data-mid="${m.id}">Registar pagamento</button>` : ''}
+    </section>
+  </div>
+  <section class="panel" style="margin-top:16px"><h2>Ocorrências da fração <small>${ocs.length}</small></h2>
+    ${ocs.length ? `<ul class="list">${ocs.map(o => `<li data-edit="ocorrencias:${o.id}" style="cursor:pointer"><span>${esc(o.titulo)}<br><span class="meta">${fmtDate(o.data)} · ${esc(o.categoria||'')}</span></span>${pill('estado', o.estado)}</li>`).join('')}</ul>` : '<p class="empty">Nenhuma ocorrência associada a esta fração.</p>'}</section>`;
+}
+
+function renderRegisto() {
+  const H = () => header('Registo de alterações', 'As últimas 300 ações: cadastros, alterações, eliminações e acessos criados.');
+  $view.innerHTML = H() + '<div class="panel"><p class="empty">A carregar…</p></div>';
+  api('GET', '/api/admin/historico').then(rows => {
+    if (view !== 'registo') return;
+    $view.innerHTML = H() + (rows.length ? `<div class="tablewrap"><table><thead><tr><th>Data e hora</th><th>Quem</th><th>Ação</th><th>Registo</th></tr></thead><tbody>
+    ${rows.map(e => { const d = new Date(e.t); return `<tr><td class="mono" style="white-space:nowrap">${fmtDate(e.t.slice(0,10))} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</td>
+      <td>${esc(e.quem || 'Conta removida')}</td><td>${pill('acao', e.acao)}</td><td>${esc(e.descr)}</td></tr>`; }).join('')}
+    </tbody></table></div>` : '<div class="panel"><p class="empty">Ainda não há alterações registadas.</p></div>');
+  }, err => { $view.innerHTML = H() + `<div class="panel"><p class="empty">${esc(err.message)}</p></div>`; });
+}
+// O servidor regista cada alteração no histórico; aqui não há nada a fazer.
+async function logAction() {}
+
+/* ---------- Contas de acesso ---------- */
+const contaDe = mid => D.utilizadores.find(u => u.morador_id === mid);
+const fmtDT = s => s ? fmtDate(s.slice(0,10)) + ' ' + s.slice(11,16) : 'Nunca entrou';
+function acessoCell(m) {
+  const u = contaDe(m.id);
+  if (!u) return `<button class="btn small" data-acesso="${m.id}">Criar acesso</button>`;
+  return `<span class="pill ${u.ativo ? 'ok' : ''}" title="${esc(u.email)}">${u.ativo ? 'Com acesso' : 'Desativado'}</span>`;
+}
+function renderContas() {
+  const us = [...D.utilizadores].sort((a,b) => a.papel.localeCompare(b.papel) || a.nome.localeCompare(b.nome, 'pt'));
+  const semAcesso = ativos().filter(m => !contaDe(m.id)).length;
+  const row = u => { const m = u.morador_id && moradorById(u.morador_id); return `<tr>
+    <td><b>${esc(u.nome)}</b>${u.id === me.id ? ' <span class="pill info">Você</span>' : ''}<br><span class="dim mono" style="font-size:12px">${esc(u.email)}</span></td>
+    <td>${u.papel === 'admin' ? '<span class="pill info">Administrador</span>' : `Morador${m ? ' · <b>' + esc(m.fracao) + '</b>' : ''}`}</td>
+    <td>${u.ativo ? '<span class="pill ok">Ativo</span>' : '<span class="pill">Desativado</span>'}${u.trocar_senha ? ' <span class="pill warn">Senha temporária</span>' : ''}</td>
+    <td class="dim" style="font-size:13px;white-space:nowrap">${fmtDT(u.ultimo_login)}</td>
+    <td><div class="rowacts">${u.id === me.id ? '<button class="btn small" data-senha>Alterar a minha senha</button>' : `
+      <button class="btn small" data-repor="${u.id}">Repor senha</button>
+      <button class="btn small" data-ativo="${u.id}">${u.ativo ? 'Desativar' : 'Reativar'}</button>
+      <button class="btn small danger" data-delconta="${u.id}">Remover</button>`}</div></td></tr>`; };
+  $view.innerHTML = header('Contas de acesso', 'Quem pode entrar no Kondo. Os administradores entram na área administrativa; os moradores entram apenas no portal do morador e só veem os próprios dados.',
+    `<button class="btn" data-go2="admin">Dar acesso a moradores</button><button class="btn primary" data-novoadmin>Novo administrador</button>`) +
+  `<div class="kpis">
+    <div class="kpi"><span class="lbl">Administradores</span><span class="val">${us.filter(u => u.papel==='admin' && u.ativo).length}</span><span class="sub">com acesso ativo</span></div>
+    <div class="kpi"><span class="lbl">Moradores com acesso</span><span class="val">${us.filter(u => u.papel==='morador' && u.ativo).length}</span><span class="sub">ao portal do morador</span></div>
+    <div class="kpi ${semAcesso?'alert':''}"><span class="lbl">Moradores sem acesso</span><span class="val">${semAcesso}</span><span class="sub">frações ativas sem conta</span></div>
+  </div>
+  ${D.pedidos.length ? `<section class="panel" style="margin-bottom:16px;border-color:var(--warn)"><h2>Pedidos de nova palavra-passe <small>${D.pedidos.length}</small></h2><ul class="list">${D.pedidos.map(pd => { const u = D.utilizadores.find(x => x.id === pd.user_id); return u ? `<li><span><b>${esc(u.nome)}</b> · ${esc(u.email)}<br><span class="meta">Pedido em ${fmtDT(pd.t)}</span></span><button class="btn small primary" data-repor="${u.id}">Repor e enviar</button></li>` : ''; }).join('')}</ul></section>` : ''}
+  <div class="tablewrap"><table><thead><tr><th>Utilizador</th><th>Área</th><th>Estado</th><th>Última entrada</th><th style="text-align:right">Ações</th></tr></thead><tbody>${us.map(row).join('')}</tbody></table></div>`;
+}
+function modal(title, inner) {
+  document.getElementById('modalRoot').innerHTML = `<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><header><h2 id="mt">${esc(title)}</h2><button class="x" type="button" data-close aria-label="Fechar">✕</button></header>${inner}</div></div>`;
+  const f = document.querySelector('#modalRoot input:not([readonly]),#modalRoot select'); if (f) f.focus();
+}
+const errBox = '<p class="field full" id="mErr" style="color:var(--bad);margin:0" hidden></p>';
+const showErr = err => { const e2 = document.getElementById('mErr'); e2.hidden = false; e2.textContent = err.message || String(err); };
+function mostrarSenha(u, senha, novo) {
+  const c = cfg();
+  const msg = `Olá ${u.nome},\n\n${novo ? 'Foi criado o seu acesso' : 'A sua palavra-passe foi reposta'} ${u.papel === 'admin' ? 'à área administrativa' : 'ao portal do morador'} do ${c.nome}.\n\nEndereço: ${location.origin}/login\nEmail: ${u.email}\nPalavra-passe temporária: ${senha}\n\nNa primeira entrada ser-lhe-á pedido que escolha uma palavra-passe nova.\n\nA Administração`;
+  modal(novo ? 'Acesso criado' : 'Palavra-passe reposta', `<form onsubmit="return false">
+    <p class="field full" style="margin:0;font-size:14px">A palavra-passe temporária só é mostrada agora. Envie a mensagem abaixo a <b>${esc(u.nome)}</b> por SMS, WhatsApp ou email.</p>
+    <div class="field full"><label for="cbTxt">Mensagem de acesso</label><textarea id="cbTxt" class="copybox" rows="11" readonly>${esc(msg)}</textarea></div>
+    <footer><span></span><div><button class="btn" type="button" data-close>Fechar</button><button class="btn primary" type="button" id="cpBtn">Copiar mensagem</button></div></footer></form>`);
+  document.getElementById('cpBtn').addEventListener('click', () => {
+    const ta = document.getElementById('cbTxt');
+    const fallback = () => { ta.focus(); ta.select(); toast('Texto selecionado. Use Ctrl+C para copiar.'); };
+    try { navigator.clipboard.writeText(ta.value).then(() => toast('Mensagem copiada'), fallback); } catch (e) { fallback(); }
+  });
+}
+function criarAcesso(mid) {
+  const m = moradorById(mid); if (!m) return;
+  modal('Dar acesso ao portal', `<form id="acForm">
+    <p class="field full" style="margin:0;font-size:14px"><b>${esc(m.nome)}</b> · fração ${esc(m.fracao)}. O morador entra com este email e vê apenas a sua conta corrente, avisos, documentos e ocorrências.</p>
+    <div class="field full"><label for="acEmail">Email de acesso</label><input id="acEmail" type="email" required value="${esc(m.email || '')}"></div>
+    ${errBox}<footer><span></span><div><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Criar acesso</button></div></footer></form>`);
+  document.getElementById('acForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    try { const j = await api('POST', '/api/admin/utilizadores', {papel:'morador', morador_id: mid, email: document.getElementById('acEmail').value.trim()});
+      D.utilizadores.push(j.utilizador); render(); mostrarSenha(j.utilizador, j.senha_temporaria, true); } catch (err) { showErr(err); }
+  });
+}
+function novoAdmin() {
+  modal('Novo administrador', `<form id="adForm">
+    <p class="field full" style="margin:0;font-size:14px">O administrador tem acesso total: finanças, moradores, dados pessoais e contas de acesso.</p>
+    <div class="field full"><label for="adNome">Nome</label><input id="adNome" required></div>
+    <div class="field full"><label for="adEmail">Email</label><input id="adEmail" type="email" required></div>
+    ${errBox}<footer><span></span><div><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Criar administrador</button></div></footer></form>`);
+  document.getElementById('adForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    try { const j = await api('POST', '/api/admin/utilizadores', {papel:'admin', nome: document.getElementById('adNome').value.trim(), email: document.getElementById('adEmail').value.trim()});
+      D.utilizadores.push(j.utilizador); render(); mostrarSenha(j.utilizador, j.senha_temporaria, true); } catch (err) { showErr(err); }
+  });
+}
+async function contaAcao(kind, id) {
+  const u = D.utilizadores.find(x => x.id === id); if (!u) return;
+  try {
+    if (kind === 'repor') { const j = await api('POST', `/api/admin/utilizadores/${id}/repor`); u.trocar_senha = true; D.pedidos = D.pedidos.filter(pd => pd.user_id !== id); render(); mostrarSenha(u, j.senha_temporaria, false); }
+    else { await api('PATCH', `/api/admin/utilizadores/${id}`, {ativo: !u.ativo}); u.ativo = !u.ativo; render(); toast(u.ativo ? 'Acesso reativado' : 'Acesso desativado'); }
+  } catch (err) { toast(err.message); }
+}
+function removerConta(id) {
+  const u = D.utilizadores.find(x => x.id === id); if (!u) return;
+  modal('Remover acesso', `<form id="rcForm"><p class="field full" style="margin:0;font-size:14px">A conta <b>${esc(u.email)}</b> deixa de poder entrar no Kondo. ${u.papel === 'morador' ? 'O perfil do morador e o histórico ficam guardados.' : ''}</p>
+    ${errBox}<footer><span></span><div><button class="btn" type="button" data-close>Cancelar</button><button class="btn danger armed" type="submit">Remover acesso</button></div></footer></form>`);
+  document.getElementById('rcForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    try { await api('DELETE', `/api/admin/utilizadores/${id}`); D.utilizadores = D.utilizadores.filter(x => x.id !== id); closeModal(); render(); toast('Acesso removido'); } catch (err) { showErr(err); }
+  });
+}
+function alterarSenha() {
+  modal('Alterar a minha palavra-passe', `<form id="pwForm">
+    <div class="field full"><label for="pwA">Palavra-passe atual</label><input id="pwA" type="password" autocomplete="current-password" required></div>
+    <div class="field"><label for="pwN">Nova (mín. 8 caracteres)</label><input id="pwN" type="password" autocomplete="new-password" minlength="8" required></div>
+    <div class="field"><label for="pwN2">Repetir nova</label><input id="pwN2" type="password" autocomplete="new-password" minlength="8" required></div>
+    ${errBox}<footer><span></span><div><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></footer></form>`);
+  document.getElementById('pwForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const n = document.getElementById('pwN').value;
+    if (n !== document.getElementById('pwN2').value) return showErr(new Error('As duas palavras-passe novas não coincidem.'));
+    try { await api('POST', '/api/senha', {atual: document.getElementById('pwA').value, nova: n}); closeModal(); toast('Palavra-passe alterada'); } catch (err) { showErr(err); }
+  });
+}
+async function sair() { try { await fetch('/api/logout', {method:'POST'}); } finally { location.href = '/login'; } }
+const describe = (col, r) => col === 'pagamentos' ? `${fracaoLabel(r.moradorId)} — ${fmtMes(r.mes)} — ${kz(r.valor)}` : `${SCHEMA[col].label}: ${r.nome || r.titulo || r.equipamento || r.descricao || r.id}${col==='moradores' ? ' (' + r.fracao + ')' : ''}`;
+
+function openDeleteMorador(id) {
+  const m = moradorById(id); if (!m) return;
+  const nP = D.pagamentos.filter(p => p.moradorId === id).length;
+  document.getElementById('modalRoot').innerHTML = `<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><header><h2 id="mt">Eliminar ${esc(m.nome)}</h2><button class="x" type="button" data-close aria-label="Fechar">✕</button></header>
+    <form id="delForm">
+      <p class="field full" style="margin:0;font-size:14px">Fração <b>${esc(m.fracao)}</b> · ${nP} pagamento${nP===1?'':'s'} registado${nP===1?'':'s'}. Escolha o que fazer:</p>
+      <label class="opt field full"><input type="radio" name="modo" value="arquivar" id="modoArq" checked><span><b>Marcar como "Mudou-se"</b><br><span class="dim" style="font-size:13px">Recomendado. O perfil sai das quotas e dívidas, mas o histórico de pagamentos fica guardado.</span></span></label>
+      <label class="opt field full"><input type="radio" name="modo" value="eliminar" id="modoDel"><span><b>Eliminar permanentemente</b><br><span class="dim" style="font-size:13px">Apaga o perfil, os dados pessoais e o acesso ao portal. Não é possível desfazer.</span></span></label>
+      <label class="field full" id="alsoPay" style="flex-direction:row;gap:8px;align-items:center;font-size:14px" hidden><input type="checkbox" id="delPays"> Apagar também os ${nP} pagamentos desta fração</label>
+      <p class="field full" id="mErr" style="color:var(--bad);margin:0" hidden></p>
+      <footer><span></span><div><button class="btn" type="button" data-close>Cancelar</button><button class="btn danger" type="submit" id="delGo">Marcar como "Mudou-se"</button></div></footer>
+    </form></div></div>`;
+  const f = document.getElementById('delForm'), go_ = document.getElementById('delGo');
+  f.addEventListener('change', () => { const del = document.getElementById('modoDel').checked; document.getElementById('alsoPay').hidden = !del || !nP; go_.textContent = del ? 'Eliminar permanentemente' : 'Marcar como "Mudou-se"'; go_.classList.remove('armed'); });
+  f.addEventListener('submit', async e => {
+    e.preventDefault();
+    const del = document.getElementById('modoDel').checked;
+    if (del && !go_.classList.contains('armed')) { go_.classList.add('armed'); go_.textContent = 'Confirmar eliminação'; return; }
+    go_.disabled = true;
+    try {
+      if (!del) { await save('moradores', {...withPriv(m), estado:'Mudou-se'}); await logAction('Arquivou', describe('moradores', m)); toast(`${m.nome} marcado como "Mudou-se"`); }
+      else {
+        if (document.getElementById('delPays').checked) for (const p of D.pagamentos.filter(p => p.moradorId === id)) await remove('pagamentos', p.id);
+        await remove('moradores', id); await logAction('Eliminou', describe('moradores', m)); toast('Morador eliminado');
+        if (view === 'perfil') go('admin');
+      }
+      closeModal();
+    } catch (err) { const e2 = document.getElementById('mErr'); e2.hidden = false; e2.textContent = errMsg(err); go_.disabled = false; }
+  });
+}
+
+/* ---------- Exportar CSV (abre no Excel com separador ;) ---------- */
+function exportCsv(nome, fields, rows) {
+  const cell = v => { const s = String(v ?? ''); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const val = (f, r) => f[0] === 'moradorId' ? fracaoLabel(r[f[0]]) : r[f[0]];
+  const lines = [fields.map(f => cell(f[1])).join(';'), ...rows.map(r => fields.map(f => cell(val(f, r))).join(';'))];
+  const blob = new Blob(['﻿' + lines.join('\r\n')], {type: 'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `kondo-${nome}-${today}.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast(`${rows.length} registos exportados`);
+}
+
+/* ---------- Pagamentos comunicados pelos moradores ---------- */
+function renderConfirmar() {
+  const pend = D.comunicacoes.filter(c => c.estado === 'Pendente').sort((a,b) => (a.criado||'').localeCompare(b.criado||''));
+  const tratadas = D.comunicacoes.filter(c => c.estado !== 'Pendente').sort((a,b) => (b.tratadoEm||'').localeCompare(a.tratadoEm||'')).slice(0, 20);
+  const linha = c => { const m = moradorById(c.moradorId); return `<tr>
+    <td><b>${esc(c.fracao)}</b><br><span class="dim" style="font-size:13px">${esc(m ? m.nome : 'Morador removido')}</span></td>
+    <td>${c.meses.map(fmtMes).join(', ')}</td><td class="dim">${fmtDate(c.data)}</td><td>${esc(c.metodo)}<br><span class="mono dim" style="font-size:12px">${esc(c.referencia||'')}</span></td>
+    <td>${c.comprovativoId ? `<a href="/ficheiros/${esc(c.comprovativoId)}" target="_blank" rel="noopener">Ver comprovativo</a>` : '<span class="dim">Sem comprovativo</span>'}</td>
+    <td class="num">${kz(c.valor)}${m && c.valor !== c.meses.length * m.quota ? `<br><span class="pill warn">Quota: ${kz(c.meses.length * m.quota)}</span>` : ''}</td>
+    <td>${c.estado === 'Pendente' ? `<div class="rowacts"><button class="btn small primary" data-confirmar="${c.id}">Confirmar</button><button class="btn small danger" data-rejeitar="${c.id}">Rejeitar</button></div>` : `<span class="pill ${c.estado === 'Confirmado' ? 'ok' : 'bad'}">${esc(c.estado)}</span>${c.motivo ? `<br><span class="dim" style="font-size:12px">${esc(c.motivo)}</span>` : ''}`}</td></tr>`; };
+  const head = '<thead><tr><th>Fração</th><th>Meses</th><th>Pago em</th><th>Método</th><th>Comprovativo</th><th class="num">Valor</th><th></th></tr></thead>';
+  $view.innerHTML = header('Pagamentos a confirmar', 'Pagamentos que os moradores comunicaram no portal. Confira o comprovativo com o extrato bancário antes de confirmar: ao confirmar, o recibo fica disponível para o morador.') +
+    (pend.length ? `<div class="tablewrap"><table>${head}<tbody>${pend.map(linha).join('')}</tbody></table></div>` : '<div class="panel"><p class="empty">Nenhum pagamento à espera de confirmação.</p></div>') +
+    (tratadas.length ? `<h2 style="font:600 15px var(--display);margin:24px 0 10px">Tratados recentemente</h2><div class="tablewrap"><table>${head}<tbody>${tratadas.map(linha).join('')}</tbody></table></div>` : '');
+}
+async function confirmarCom(id) {
+  try { const j = await api('POST', `/api/admin/comunicacoes/${id}/confirmar`); await loadAll(); render(); toast(`Pagamento confirmado · ${j.criados} recibo${j.criados === 1 ? '' : 's'} criado${j.criados === 1 ? '' : 's'}`); }
+  catch (err) { toast(err.message); }
+}
+function rejeitarCom(id) {
+  modal('Rejeitar pagamento', `<form id="rjForm"><div class="field full"><label for="rjM">Motivo (o morador vê esta mensagem)</label><textarea id="rjM" required placeholder="Ex.: O valor não aparece no extrato da conta do condomínio."></textarea></div>
+    ${errBox}<footer><span></span><div><button class="btn" type="button" data-close>Cancelar</button><button class="btn danger armed" type="submit">Rejeitar</button></div></footer></form>`);
+  document.getElementById('rjForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    try { await api('POST', `/api/admin/comunicacoes/${id}/rejeitar`, {motivo: document.getElementById('rjM').value}); closeModal(); await loadAll(); render(); toast('Pagamento rejeitado'); } catch (err) { showErr(err); }
+  });
+}
+
+/* ---------- Relatórios ---------- */
+function renderRelatorios() {
+  const meses = monthsBetween(cfg().inicio || curMes, curMes).reverse();
+  $view.innerHTML = header('Relatórios', 'Relatório mensal para a assembleia e exportações para Excel.') +
+  `<div class="grid2"><section class="panel"><h2>Relatório mensal</h2>
+      <p class="dim" style="margin:0 0 12px;font-size:14px">Quotas cobradas, entradas, despesas por categoria, frações em atraso e ocorrências do mês. Abre numa página pronta a imprimir ou guardar em PDF.</p>
+      <div class="toolbar" style="margin:0"><select class="filter" id="relMes" aria-label="Mês do relatório">${meses.map(m => `<option value="${m}">${fmtMes(m)}</option>`).join('')}</select>
+      <a class="btn primary" id="relGo" href="/relatorio/${meses[0]}" target="_blank" rel="noopener">Abrir relatório</a></div></section>
+    <section class="panel"><h2>Exportar para Excel (CSV)</h2><ul class="list">
+      ${[['moradores','Moradores e frações'],['pagamentos','Pagamentos'],['despesas','Despesas'],['dividas','Dívidas em atraso'],['funcionarios','Funcionários'],['ocorrencias','Ocorrências']].map(([k,l]) => `<li><span>${l}</span><button class="btn small" data-exp="${k}">Exportar</button></li>`).join('')}
+    </ul></section></div>`;
+  document.getElementById('relMes').addEventListener('change', e => { document.getElementById('relGo').href = '/relatorio/' + e.target.value; });
+  $view.querySelectorAll('[data-exp]').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.exp;
+    if (k === 'dividas') exportCsv('dividas', [['fracao','Fração'],['nome','Responsável'],['telefone','Telefone'],['meses','Meses em atraso'],['total','Valor em atraso (Kz)']],
+      dividas().map(x => ({fracao:x.m.fracao, nome:x.m.nome, telefone:x.m.telefone, meses:x.meses.map(fmtMes).join(', '), total:x.total})));
+    else exportCsv(k, SCHEMA[k].fields.filter(f => f[2] !== 'section' && f[2] !== 'file'), sortRows(D[k], SCHEMA[k].sort));
+  }));
+}
+
+/* ---------- Definições e assinatura ---------- */
+const PLANO_TXT = {
+  'Básico': ['Quotas, pagamentos e dívidas','Portal do morador','Avisos aos moradores'],
+  'Profissional': ['Tudo do Básico','Ocorrências e manutenção','CCTV e documentos','Relatórios mensais'],
+  'Empresarial': ['Tudo do Profissional','Frações ilimitadas','Suporte prioritário'],
+};
+function renderDefinicoes() {
+  const c = cfg();
+  const F = [['nome','Nome do condomínio','text',{full:1}],['morada','Morada','text',{full:1}],['nif','NIF','text'],['iban','IBAN para quotas','text'],['diaVencimento','Dia de vencimento da quota','number'],['inicio','Início da cobrança','month']];
+  $view.innerHTML = header('Definições', 'Dados do condomínio e assinatura do Kondo.') +
+    `<div class="grid2"><section class="panel"><h2>Condomínio</h2><form id="cfgForm" style="display:grid;grid-template-columns:1fr 1fr;gap:12px 14px">
+      ${F.map(f => fieldHtml(f, c[f[0]], 'cfg')).join('')}
+      <div class="field full" style="flex-direction:row;justify-content:flex-end"><button class="btn primary" type="submit">Guardar definições</button></div></form></section>
+     <section class="panel"><h2>Resumo</h2><ul class="list">
+      <li><span>Frações ativas</span><span class="num">${ativos().length}${condo.limite ? ' / ' + condo.limite : ''}</span></li>
+      <li><span>Receita mensal esperada</span><span class="num">${kz(sum(ativos(),'quota'))}</span></li>
+      <li><span>Salários mensais</span><span class="num">${kz(sum(D.funcionarios.filter(f=>f.estado!=='Inativo'),'salario'))}</span></li>
+      <li><span>Documentos arquivados</span><span class="num">${D.documentos.length}</span></li></ul></section></div>
+    <section class="panel" style="margin-top:16px" id="assin"><h2>Assinatura Kondo</h2><p class="empty">A carregar…</p></section>`;
+  document.getElementById('cfgForm').addEventListener('submit', async e => {
+    e.preventDefault(); const obj = {...c, id:'geral'}; readForm(e.target, F, obj, 'cfg'); obj.diaVencimento = +obj.diaVencimento || 10;
+    try { await save('config', obj); toast('Definições guardadas'); } catch (err) { toast(err.message); }
+  });
+  api('GET', '/api/admin/assinatura').then(a => {
+    const el = document.getElementById('assin'); if (!el) return;
+    const atraso = a.faturas.filter(f => f.estado === 'Em atraso');
+    el.innerHTML = `<h2>Assinatura Kondo <small>Faturação mensal em kwanzas · Multicaixa Express ou transferência</small></h2>
+      ${atraso.length ? `<div class="banner" style="border-color:var(--bad);background:var(--bad-soft)">Tem ${atraso.length} fatura${atraso.length>1?'s':''} em atraso (${kz(atraso.reduce((s,f)=>s+f.valor,0))}). Sem regularização, a assinatura pode ser suspensa.</div>` : ''}
+      <div class="plans">${a.planos.map(p => `<div class="plan ${a.plano===p.nome?'cur':''}"><b>${p.nome}</b><span class="price">${kz(p.preco)}<span class="dim" style="font:400 13px var(--body)"> / mês</span></span>
+        <span class="dim" style="font-size:13px">${p.limite ? 'até ' + p.limite + ' frações' : 'frações ilimitadas'}</span><ul>${(PLANO_TXT[p.nome]||[]).map(x => `<li>${x}</li>`).join('')}</ul>
+        ${a.plano===p.nome ? '<span class="pill ok" style="align-self:flex-start;margin-top:6px">Plano atual</span>' : (p.limite && a.fracoesAtivas > p.limite) ? `<span class="dim" style="font-size:12px;margin-top:6px">Tem ${a.fracoesAtivas} frações ativas</span>` : `<button class="btn small" style="align-self:flex-start;margin-top:6px" data-plano="${p.nome}">Mudar para ${p.nome}</button>`}</div>`).join('')}</div>
+      <h2 style="margin-top:20px">Faturas</h2>
+      ${a.faturas.length ? `<div class="tablewrap"><table><thead><tr><th>Período</th><th>Plano</th><th>Referência</th><th>Vence</th><th>Estado</th><th class="num">Valor</th></tr></thead><tbody>
+        ${a.faturas.map(f => `<tr><td>${fmtMes(f.periodo)}</td><td>${esc(f.plano)}</td><td class="mono">${esc(f.referencia)}</td><td class="dim">${fmtDate(f.vence)}</td><td><span class="pill ${f.estado==='Paga'?'ok':f.estado==='Em atraso'?'bad':f.estado==='Anulada'?'':'warn'}">${esc(f.estado)}</span></td><td class="num">${kz(f.valor)}</td></tr>`).join('')}
+      </tbody></table></div><p class="dim" style="font-size:13px;margin:10px 0 0">Para pagar, use a referência da fatura no descritivo da transferência para a conta Kondo.</p>` : '<p class="empty">Ainda não há faturas.</p>'}`;
+  }, err => { const el = document.getElementById('assin'); if (el) el.innerHTML = `<h2>Assinatura Kondo</h2><p class="empty">${esc(err.message)}</p>`; });
+}
+async function mudarPlano(plano) {
+  try { await api('POST', '/api/admin/assinatura/plano', {plano}); await loadAll(); render(); toast('Plano alterado para ' + plano + '. Aplica-se a partir da próxima fatura.'); }
+  catch (err) { toast(err.message); }
+}
+
+/* ---------- Forms ---------- */
+function fieldHtml(f, v, pfx='f') {
+  const [k, label, t, o] = f; const opts = (Array.isArray(o) ? {} : o) || {};
+  if (t === 'section') return `<div class="field full sec">${esc(label)}</div>`;
+  const id = `${pfx}-${k}`, cls = 'field' + (opts.full ? ' full' : ''), req = opts.req ? 'required' : '';
+  let input;
+  if (t === 'select') input = `<select id="${id}" name="${k}">${o.map(x => `<option ${x===v?'selected':''}>${esc(x)}</option>`).join('')}</select>`;
+  else if (t === 'morador') input = `<select id="${id}" name="${k}" ${req}><option value="">Escolher fração…</option>${[...D.moradores].sort((a,b)=>(a.fracao||'').localeCompare(b.fracao||'')).map(m => `<option value="${m.id}" ${m.id===v?'selected':''}>${esc(m.fracao)} · ${esc(m.nome)}</option>`).join('')}</select>`;
+  else if (t === 'textarea') input = `<textarea id="${id}" name="${k}" ${req}>${esc(v)}</textarea>`;
+  else if (t === 'file') input = assets ? `<input id="${id}" name="${k}" type="file" accept="${opts.accept || '.pdf,image/*'}">${v?`<span class="dim" style="font-size:12px">Atual: ${esc(v)}</span>`:''}` : `<span class="dim" style="font-size:13px">${v?esc(v)+' · ':''}O envio de ficheiros só está disponível para editores deste espaço.</span>`;
+  else input = `<input id="${id}" name="${k}" type="${t==='money'?'number':t}" ${t==='money'?'min="0" step="100"':''} value="${esc(v)}" ${opts.ph?`placeholder="${esc(opts.ph)}"`:''} ${req}>`;
+  return `<div class="${cls}"><label for="${id}">${esc(label)}</label>${input}</div>`;
+}
+function readForm(form, fields, obj, pfx='f') {
+  for (const [k,, t] of fields) { if (t === 'file' || t === 'section') continue; const el = form.querySelector(`#${pfx}-${k}`); if (!el) continue; obj[k] = (t==='money'||t==='number') ? (el.value===''? 0 : +el.value) : el.value.trim(); }
+  return obj;
+}
+function openForm(col, rec, preset) {
+  const S = SCHEMA[col]; const isNew = !rec; const ro = !canWrite(col);
+  const r = rec ? (col === 'moradores' ? withPriv(rec) : {...rec}) : {id: uid(), ...defaults(col), ...(preset||{})};
+  const fields = (col === 'moradores' && !isAdmin) ? S.fields.filter(f => !(f[3] && f[3].priv)) : S.fields;
+  const root = document.getElementById('modalRoot');
+  const title = ro ? S.label : isNew ? (col === 'moradores' ? 'Cadastrar morador' : 'Novo registo · ' + S.label) : 'Editar · ' + S.label;
+  root.innerHTML = `<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><header><h2 id="mt">${esc(title)}</h2><button class="x" type="button" data-close aria-label="Fechar">✕</button></header>
+    <form id="mf">${fields.map(f => fieldHtml(f, f[2]==='file' ? r[f[0]+'Nome'] : r[f[0]])).join('')}
+    <p class="dim field full" id="mErr" style="color:var(--bad);margin:0" hidden></p>
+    <footer>${ro ? '<span class="dim" style="font-size:13px">Só administradores podem alterar este registo.</span><div><button class="btn" type="button" data-close>Fechar</button></div>'
+      : `${isNew ? '<span></span>' : '<button class="btn danger" type="button" id="delBtn">Eliminar</button>'}<div><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">${isNew?(col==='moradores'?'Cadastrar':'Adicionar'):'Guardar'}</button></div>`}</footer></form></div></div>`;
+  const form = document.getElementById('mf');
+  if (ro) { form.querySelectorAll('input,select,textarea').forEach(el => el.disabled = true); return; }
+  const first = form.querySelector('input,select,textarea'); if (first) first.focus();
+  if (col === 'pagamentos') { const sel = form.querySelector('#f-moradorId'), val = form.querySelector('#f-valor'); sel.addEventListener('change', () => { const m = moradorById(sel.value); if (m && isNew) val.value = m.quota; }); }
+  form.addEventListener('submit', async e => {
+    e.preventDefault(); readForm(form, fields, r);
+    const btn = form.querySelector('[type=submit]'), label0 = btn.textContent;
+    if (col === 'moradores') {
+      const dup = D.moradores.find(x => x.id !== r.id && isAtivo(x) && isAtivo(r) && (x.fracao||'').toLowerCase() === (r.fracao||'').toLowerCase());
+      if (dup) { const e2 = document.getElementById('mErr'); e2.hidden = false; e2.textContent = `A fração ${r.fracao} já está atribuída a ${dup.nome}. Marque esse morador como "Mudou-se" antes de cadastrar outro.`; return; }
+    }
+    btn.disabled = true; btn.textContent = 'A guardar…';
+    try {
+      for (const fileEl of form.querySelectorAll('input[type=file]')) {
+        if (fileEl.files[0] && assets) { const up = await assets.upload(fileEl.files[0]); r[fileEl.name + 'Id'] = up.id; r[fileEl.name + 'Nome'] = fileEl.files[0].name; }
+      }
+      await save(col, r); closeModal(); toast(isNew ? (col === 'moradores' ? 'Morador cadastrado' : `${S.label} adicionado`) : 'Alterações guardadas');
+      if (isAdmin) logAction(isNew ? 'Criou' : 'Alterou', describe(col, r));
+    } catch (err) { const e2 = document.getElementById('mErr'); e2.hidden = false; e2.textContent = errMsg(err); btn.disabled = false; btn.textContent = label0; }
+  });
+  const del = document.getElementById('delBtn');
+  if (del) del.addEventListener('click', async () => {
+    if (col === 'moradores') { closeModal(); openDeleteMorador(r.id); return; }
+    if (!del.classList.contains('armed')) { del.classList.add('armed'); del.textContent = 'Confirmar eliminação'; return; }
+    try { await remove(col, r.id); closeModal(); toast('Registo eliminado'); if (isAdmin) logAction('Eliminou', describe(col, r)); } catch (err) { const e2 = document.getElementById('mErr'); e2.hidden = false; e2.textContent = errMsg(err); }
+  });
+}
+function defaults(col) {
+  const c = cfg();
+  return ({
+    pagamentos:{mes:curMes, data:today, metodo:'Multicaixa Express', referencia:'REC-' + String(1000 + D.pagamentos.length + 1)},
+    despesas:{data:today, categoria:'Outro'}, ocorrencias:{data:today, estado:'Aberta', prioridade:'Média', categoria:'Infraestrutura'},
+    manutencao:{tipo:'Preventiva', estado:'Agendada'}, moradores:{tipologia:'T2', tipo:'Proprietário', estado:'Ativo', quota:35000, desde:curMes},
+    funcionarios:{estado:'Ativo', turno:'Diurno'}, documentos:{data:today}, cameras:{estado:'Online', verificacao:today}, avisos:{data:today, destinatarios:'Todos', fixado:'Não'},
+  })[col] || {};
+}
+function closeModal() { document.getElementById('modalRoot').innerHTML = ''; }
+function errMsg(e) { return (e && e.message) || 'Não foi possível guardar. Verifique a ligação e tente de novo.'; }
+document.getElementById('modalRoot').addEventListener('click', e => { if (e.target.id === 'ov' || e.target.closest('[data-close]')) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); if (e.key === 'Enter' && e.target.matches('tr[data-edit],tr[data-perfil]')) e.target.click(); });
+
+function cobranca(mid) {
+  const x = dividas().find(d => d.m.id === mid); if (!x) return; const c = cfg();
+  const txt = `Caro(a) ${x.m.nome},\n\nA administração do ${c.nome} informa que a fração ${x.m.fracao} tem ${x.meses.length} quota(s) em atraso (${x.meses.map(fmtMes).join(', ')}), no valor total de ${kz(x.total)}.\n\nPode regularizar por Multicaixa Express ou transferência para o IBAN ${c.iban || '—'}, indicando a fração no descritivo.\n\nObrigado,\nA Administração`;
+  document.getElementById('modalRoot').innerHTML = `<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><header><h2 id="mt">Mensagem de cobrança · ${esc(x.m.fracao)}</h2><button class="x" type="button" data-close aria-label="Fechar">✕</button></header>
+    <form onsubmit="return false"><div class="field full"><label for="cbTxt">Texto para enviar por SMS ou WhatsApp para ${esc(x.m.telefone)}</label><textarea id="cbTxt" class="copybox" rows="9">${esc(txt)}</textarea></div>
+    <footer><span></span><div><button class="btn" type="button" data-close>Fechar</button><button class="btn primary" type="button" id="cpBtn">Copiar texto</button></div></footer></form></div></div>`;
+  document.getElementById('cpBtn').addEventListener('click', () => {
+    const ta = document.getElementById('cbTxt');
+    const fallback = () => { ta.focus(); ta.select(); toast('Texto selecionado. Use Ctrl+C para copiar.'); };
+    try { navigator.clipboard.writeText(ta.value).then(() => toast('Texto copiado'), fallback); } catch (e) { fallback(); }
+  });
+}
+
+/* ---------- Global clicks ---------- */
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-stop]')) return;
+  const t = e.target.closest('[data-act],[data-edit],[data-pay],[data-go2],[data-cobrar],[data-plano],[data-perfil],[data-del],[data-acesso],[data-repor],[data-ativo],[data-delconta],[data-novoadmin],[data-senha],[data-sair],[data-confirmar],[data-rejeitar]'); if (!t) return;
+  if (t.dataset.perfil) { perfilId = t.dataset.perfil; go('perfil'); return; }
+  if (t.dataset.del) { openDeleteMorador(t.dataset.del); return; }
+  if (t.dataset.acesso) { criarAcesso(t.dataset.acesso); return; }
+  if (t.dataset.repor) { contaAcao('repor', t.dataset.repor); return; }
+  if (t.dataset.ativo) { contaAcao('ativo', t.dataset.ativo); return; }
+  if (t.dataset.delconta) { removerConta(t.dataset.delconta); return; }
+  if ('novoadmin' in t.dataset) { novoAdmin(); return; }
+  if ('senha' in t.dataset) { alterarSenha(); return; }
+  if ('sair' in t.dataset) { sair(); return; }
+  if (t.dataset.confirmar) { confirmarCom(t.dataset.confirmar); return; }
+  if (t.dataset.rejeitar) { rejeitarCom(t.dataset.rejeitar); return; }
+  if (t.dataset.act === 'novo') { const m = t.dataset.mid && moradorById(t.dataset.mid); openForm(t.dataset.col, null, m ? {moradorId:m.id, valor:m.quota} : null); }
+  else if (t.dataset.edit) { const [col, id] = t.dataset.edit.split(':'); const r = D[col].find(x => x.id === id); if (r) openForm(col, r); }
+  else if (t.dataset.pay) { const [mid, mes] = t.dataset.pay.split('|'); const m = moradorById(mid); openForm('pagamentos', null, {moradorId:mid, mes, valor:m ? m.quota : 0}); }
+  else if (t.dataset.go2) go(t.dataset.go2);
+  else if (t.dataset.cobrar) cobranca(t.dataset.cobrar);
+  else if (t.dataset.plano) mudarPlano(t.dataset.plano);
+});
+
+let toastT;
+function toast(msg) { let el = document.querySelector('.toast'); if (!el) { el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role','status'); document.body.appendChild(el); } el.textContent = msg; clearTimeout(toastT); toastT = setTimeout(() => el.remove(), 2600); }
+
+/* ---------- Data layer (servidor Kondo) ---------- */
+async function api(method, url, body) {
+  const r = await fetch(url, { method, headers: body ? {'Content-Type':'application/json'} : {}, body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 401) { location.href = '/login'; throw new Error('A sua sessão terminou. Entre de novo.'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || 'Não foi possível contactar o servidor. Verifique a ligação.');
+  return j;
+}
+async function save(col, obj) {
+  const clean = JSON.parse(JSON.stringify(obj));
+  const j = await api('PUT', `/api/admin/reg/${col}/${encodeURIComponent(clean.id)}`, clean);
+  const i = D[col].findIndex(x => x.id === clean.id); if (i >= 0) D[col][i] = j.registo; else D[col].push(j.registo);
+  if (col === 'moradores') D.utilizadores.forEach(u => { if (u.morador_id === clean.id) u.nome = clean.nome; });
+  render();
+}
+async function remove(col, id) {
+  await api('DELETE', `/api/admin/reg/${col}/${encodeURIComponent(id)}`);
+  D[col] = D[col].filter(x => x.id !== id);
+  if (col === 'moradores') D.utilizadores = D.utilizadores.filter(u => u.morador_id !== id);
+  render();
+}
+const assets = {
+  upload: file => new Promise((resolve, reject) => {
+    if (file.size > 5e6) return reject(new Error('O ficheiro deve ter até 5 MB.'));
+    const fr = new FileReader();
+    fr.onload = () => api('POST', '/api/admin/ficheiros', { nome: file.name, tipo: file.type, base64: String(fr.result).split(',')[1] }).then(resolve, reject);
+    fr.onerror = () => reject(new Error('Não foi possível ler o ficheiro.'));
+    fr.readAsDataURL(file);
+  }),
+};
+async function loadAll() {
+  const j = await api('GET', '/api/admin/dados');
+  for (const c of COLS) D[c] = j[c] || [];
+  me = j.eu; condo = j.condominio || condo;
+}
+async function boot() {
+  try { await loadAll(); } catch (e) { $view.innerHTML = `<div class="panel"><p class="empty">${esc(e.message)}</p></div>`; return; }
+  const aviso = sessionStorage.getItem('kondo_aviso'); if (aviso) { sessionStorage.removeItem('kondo_aviso'); setTimeout(() => toast(aviso), 300); }
+  render();
+}
+window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if (v && v !== view) { view = v; render(); } });
+boot();
+})();
+</script>
+</body>
+</html>
