@@ -132,7 +132,7 @@ tbody tr.click:hover td{background:var(--surface-2)}
 .dot.off{background:var(--bad)}
 /* Modal */
 .overlay{position:fixed;inset:0;background:rgba(8,18,15,.45);display:grid;place-items:center;padding:16px;z-index:50}
-.modal{background:var(--surface);border-radius:14px;width:min(560px,100%);max-height:calc(100% - 32px);overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);border:1px solid var(--line)}
+.modal{background:var(--surface);border-radius:14px;width:min(560px,100%);max-height:calc(100% - 32px);max-height:calc(100dvh - 32px);overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);border:1px solid var(--line)}
 .modal header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
 .modal header h2{font:600 17px var(--display);margin:0}
 .modal form{padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
@@ -141,6 +141,16 @@ tbody tr.click:hover td{background:var(--surface-2)}
 .field label{font-size:12px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .field input,.field select,.field textarea{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:8px 10px;width:100%}
 .field textarea{min-height:80px;resize:vertical}
+/* Caixas de seleção e opções: não herdam a largura total dos campos de texto */
+.field input[type=checkbox],.field input[type=radio],.opt input{width:18px;height:18px;flex:none;padding:0;margin:1px 0 0;accent-color:var(--accent)}
+.field label.opt{text-transform:none;letter-spacing:0;font-size:14px;font-weight:400;color:var(--ink)}
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.opts .opt{align-items:center;padding:10px 12px}
+/* Data e ficheiro: o iOS/Safari ignora a largura se não forem normalizados */
+.field input[type=date],.field input[type=month],.field input[type=number]{min-width:0;max-width:100%;min-height:40px;-webkit-appearance:none;appearance:none;text-align:left;display:block}
+.field input::-webkit-date-and-time-value{text-align:left;min-height:1.4em}
+.field input[type=file]{padding:6px 8px;min-height:40px;max-width:100%}
+.field input::file-selector-button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:5px 10px;margin-right:10px;font:inherit;cursor:pointer}
 .modal footer{grid-column:1/-1;display:flex;justify-content:space-between;gap:8px;padding-top:6px;flex-wrap:wrap}
 .modal footer div{display:flex;gap:8px}
 .x{all:unset;cursor:pointer;width:30px;height:30px;display:grid;place-items:center;border-radius:6px;color:var(--muted)}
@@ -176,8 +186,18 @@ tbody tr.click:hover td{background:var(--surface-2)}
   .nav button[aria-current="page"]{box-shadow:inset 0 -2px 0 var(--accent)}
   .grid2{grid-template-columns:1fr}
 }
+@media (max-width:900px){
+  /* 16px evita o zoom automático do iOS ao tocar num campo */
+  .field input,.field select,.field textarea{font-size:16px}
+}
 @media (max-width:520px){
   .modal form{grid-template-columns:1fr}
+  .modal header,.modal form{padding-inline:16px}
+  .modal footer{flex-direction:column-reverse;align-items:stretch}
+  .modal footer>span:empty{display:none}
+  .modal footer>*{width:100%}
+  .modal footer div{display:flex;gap:8px}
+  .modal footer .btn{flex:1 1 0;justify-content:center;text-align:center;min-height:44px}
   .brand b{display:none}
 }
 @media (prefers-reduced-motion:no-preference){

@@ -191,7 +191,7 @@ function comunicarPagamento() {
   const opcoes = [...new Set([...D.divida.meses, cur, prox])].filter(x => !pagos.has(x) && !pend.has(x) && (!m.desde || x >= m.desde)).sort();
   if (!opcoes.length) return toast('Não há meses por pagar para comunicar.');
   modal('Comunicar pagamento', `<form id="cpForm">
-    <div class="field full"><label>Meses que pagou</label><div style="display:flex;flex-wrap:wrap;gap:8px">${opcoes.map(x => `<label class="opt" style="padding:6px 10px"><input type="checkbox" name="mes" value="${x}" ${D.divida.meses.includes(x) ? 'checked' : ''}> ${fmtMes(x)}</label>`).join('')}</div></div>
+    <div class="field full"><label>Meses que pagou</label><div class="opts">${opcoes.map(x => `<label class="opt"><input type="checkbox" name="mes" value="${x}" ${D.divida.meses.includes(x) ? 'checked' : ''}> ${fmtMes(x)}</label>`).join('')}</div></div>
     <div class="field"><label for="cpV">Valor pago (Kz)</label><input id="cpV" type="number" min="1" step="1" required></div>
     <div class="field"><label for="cpD">Data do pagamento</label><input id="cpD" type="date" required value="${new Date().toISOString().slice(0,10)}"></div>
     <div class="field"><label for="cpM">Método</label><select id="cpM">${['Multicaixa Express','Transferência BAI','Transferência BFA','Transferência BIC','Depósito BIC','Numerário','Outro'].map(x => `<option>${x}</option>`).join('')}</select></div>
