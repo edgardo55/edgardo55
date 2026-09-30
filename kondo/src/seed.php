@@ -10,7 +10,7 @@ function seedRun(): void {
     };
 
     // Conta do operador da plataforma (o dono do SaaS). Também é criada em instalações antigas.
-    $opEmail = getenv('KONDO_EMAIL') ?: 'plataforma@kondo.ao';
+    $opEmail = envv('KONDO_EMAIL') ?: 'plataforma@kondo.ao';
     if (!one('SELECT 1 FROM operadores')) {
         $senha = tempPassword();
         run('INSERT INTO operadores (id, email, nome, senha, criado) VALUES (?, ?, ?, ?, ?)', [newId('op_'), $opEmail, 'Operador Kondo', hashPassword($senha), nowIso()]);
@@ -18,7 +18,7 @@ function seedRun(): void {
     }
 
     // KONDO_DEMO=0 arranca sem condomínios de demonstração (instalação de produção).
-    if (getenv('KONDO_DEMO') !== '0' && !one('SELECT 1 FROM condominios')) {
+    if (envv('KONDO_DEMO') !== '0' && !one('SELECT 1 FROM condominios')) {
         $demo = json_decode(file_get_contents(ROOT . '/seed/demo.json'), true, 512, JSON_THROW_ON_ERROR);
         $user = function (string $condo, string $papel, string $email, string $nome, ?string $moradorId = null) use ($addConta) {
             $senha = tempPassword();

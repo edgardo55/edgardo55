@@ -30,9 +30,16 @@ function fail(int $code, string $msg): never { throw new HttpError($msg, $code);
 
 /* ---------------- Configuração e base de dados ---------------- */
 define('ROOT', dirname(__DIR__));
-define('DATA_DIR', rtrim(getenv('KONDO_DATA') ?: ROOT . '/data', '/\\'));
+// Lê uma variável de ambiente; aceita também $_SERVER (é onde o SetEnv do Apache/LiteSpeed costuma aparecer).
+function envv(string $k): string|false {
+    $v = getenv($k);
+    if ($v === false && isset($_SERVER[$k]) && is_string($_SERVER[$k])) $v = $_SERVER[$k];
+    if ($v === false && isset($_SERVER['REDIRECT_' . $k]) && is_string($_SERVER['REDIRECT_' . $k])) $v = $_SERVER['REDIRECT_' . $k];
+    return $v;
+}
+define('DATA_DIR', rtrim(envv('KONDO_DATA') ?: ROOT . '/data', '/\\'));
 define('UPLOADS', DATA_DIR . '/uploads');
-define('SECURE_COOKIE', getenv('KONDO_HTTPS') === '1');
+define('SECURE_COOKIE', envv('KONDO_HTTPS') === '1');
 if (!is_dir(UPLOADS)) mkdir(UPLOADS, 0770, true);
 
 function db(): PDO {
