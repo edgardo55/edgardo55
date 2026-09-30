@@ -1,0 +1,93 @@
+/* ===== Paleta MediaNova — ajuste aqui conforme o logotipo ===== */
+:root{
+  --brand-dark:#0b1f3a;     /* azul marinho (fundo/menu) */
+  --brand-dark-2:#12305a;
+  --brand:#0a84ff;          /* azul principal */
+  --brand-accent:#ff7a1a;   /* laranja de destaque */
+  --bg:#f3f6fb;
+  --card:#fff;
+  --text:#1c2733;
+  --muted:#6b7a8c;
+  --line:#e2e8f0;
+  --ok:#1fa971; --warn:#f5a623; --danger:#e5484d;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+.hidden{display:none!important}
+
+.sidebar{width:240px;background:linear-gradient(180deg,var(--brand-dark),var(--brand-dark-2));color:#fff;display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh}
+.brand{display:flex;gap:10px;align-items:center;margin-bottom:28px}
+.logo-mark{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand-accent));display:grid;place-items:center;font-weight:800;font-size:22px}
+.brand strong{font-size:20px;letter-spacing:.3px}
+.brand strong span{color:var(--brand-accent)}
+.brand small{display:block;color:#9db4d3;font-size:12px}
+nav{display:flex;flex-direction:column;gap:6px}
+.nav-btn{background:none;border:0;color:#cfdcef;text-align:left;padding:11px 12px;border-radius:10px;font-size:15px;cursor:pointer}
+.nav-btn:hover{background:rgba(255,255,255,.08)}
+.nav-btn.active{background:var(--brand);color:#fff;font-weight:600}
+.sidebar-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+
+main{flex:1;padding:24px 28px;min-width:0}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.topbar h1{font-size:24px;color:var(--brand-dark);border-left:5px solid var(--brand-accent);padding-left:12px}
+input,select,textarea{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--brand);border-color:transparent}
+#globalSearch{max-width:320px}
+
+.btn{font:inherit;border:0;border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:600}
+.btn.primary{background:var(--brand);color:#fff}.btn.primary:hover{background:#0870dc}
+.btn.accent{background:var(--brand-accent);color:#fff}
+.btn.ghost{background:rgba(255,255,255,.1);color:#fff;font-weight:500;font-size:13px}
+.btn.ghost:hover{background:rgba(255,255,255,.2)}
+
+.panel{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 1px 3px rgba(11,31,58,.08);margin-bottom:18px}
+.panel h3{margin-bottom:12px;color:var(--brand-dark);font-size:16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin-bottom:18px}
+.stat{background:var(--card);border-radius:14px;padding:16px;border-top:4px solid var(--brand);box-shadow:0 1px 3px rgba(11,31,58,.08)}
+.stat b{font-size:32px;color:var(--brand-dark);display:block}
+.stat span{color:var(--muted);font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.bar-row{display:grid;grid-template-columns:110px 1fr 30px;gap:10px;align-items:center;margin:8px 0;font-size:14px}
+.bar{height:10px;border-radius:6px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand-accent))}
+
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px}
+.table-wrap{overflow-x:auto;padding:0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;background:var(--brand-dark);color:#fff;padding:12px;font-weight:600;white-space:nowrap}
+td{padding:12px;border-bottom:1px solid var(--line)}
+tbody tr{cursor:pointer}tbody tr:hover{background:#eef5ff}
+.empty{padding:24px;text-align:center;color:var(--muted)}
+
+.tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
+.s-Aberto{background:var(--brand)}.s-Em\ andamento{background:var(--brand-accent)}
+.s-Aguardando{background:var(--warn)}.s-Resolvido{background:var(--ok)}.s-Fechado{background:#8492a6}
+.p-Baixa{background:#8492a6}.p-Média{background:var(--brand)}.p-Alta{background:var(--brand-accent)}.p-Crítica{background:var(--danger)}
+
+.form label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:14px}
+.form label input,.form label select,.form label textarea{margin-top:5px;font-weight:400;color:var(--text)}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.actions{text-align:right}
+
+.modal{position:fixed;inset:0;background:rgba(11,31,58,.6);display:grid;place-items:center;padding:16px;z-index:10}
+.modal-box{background:#fff;border-radius:16px;width:min(760px,100%);max-height:92vh;overflow:auto;padding:24px;position:relative;border-top:6px solid var(--brand-accent)}
+.close{position:absolute;right:14px;top:8px;background:none;border:0;font-size:28px;cursor:pointer;color:var(--muted)}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:14px 0}
+.meta label{font-size:12px;color:var(--muted);font-weight:600}
+.desc{background:var(--bg);padding:12px;border-radius:10px;white-space:pre-wrap;margin-bottom:16px}
+.comment{border-left:3px solid var(--brand);padding:6px 12px;margin:10px 0;background:#f8fbff;border-radius:0 8px 8px 0}
+.comment small{color:var(--muted)}
+.comment.internal{border-color:var(--brand-accent);background:#fff7f0}
+.addc{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.addc .r{display:flex;justify-content:space-between;align-items:center;gap:8px}
+
+.toast{position:fixed;bottom:22px;right:22px;background:var(--brand-dark);color:#fff;padding:12px 18px;border-radius:10px;border-left:4px solid var(--brand-accent);z-index:20}
+
+@media(max-width:800px){
+  body{flex-direction:column}
+  .sidebar{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;align-items:center;padding:12px}
+  .brand{margin:0 12px 0 0}nav{flex-direction:row;flex-wrap:wrap}
+  .sidebar-foot{flex-direction:row;margin:0}
+  .grid2{grid-template-columns:1fr}
+  main{padding:16px}
+}
