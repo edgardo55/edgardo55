@@ -1,6 +1,6 @@
 /* Cores definidas em Configurações → Identidade visual (sobrescritas via JS) */
 :root{
-  --brand-dark:#0b1f3a; --brand:#0a84ff; --brand-accent:#ff7a1a;
+  --brand-dark:#2a2266; --brand:#3b3190; --brand-accent:#e30613; --orange:#f08a00;
   --bg:#f3f6fb; --card:#fff; --text:#1c2733; --muted:#66768a; --line:#e2e8f0;
   --ok:#1fa971; --warn:#f5a623; --danger:#e5484d; --radius:14px;
   --dark-2:color-mix(in srgb,var(--brand-dark) 82%,#fff);
@@ -40,20 +40,22 @@ label.inline{display:flex;align-items:center;gap:8px}
 .form-error{color:var(--danger);font-size:13px;min-height:18px;margin-bottom:8px}
 .logo-mark{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand-accent));display:grid;place-items:center;font-weight:800;font-size:22px;color:#fff;flex:none}
 .logo-img{max-height:46px;max-width:150px;object-fit:contain}
-.login .logo-img{max-height:64px;max-width:220px}
+.login .logo-img{max-height:110px;max-width:260px}
 
 /* layout */
 .shell{display:flex;min-height:100vh}
 .sidebar{width:248px;background:linear-gradient(180deg,var(--brand-dark),var(--dark-2));color:#fff;display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh;flex:none;z-index:30}
-.brand{display:flex;gap:10px;align-items:center;margin-bottom:26px}
-.brand strong{font-size:19px;display:block}.brand small{color:#a9bfdc;font-size:12px}
+.brand{margin-bottom:26px;text-align:center}
+.logo-card{background:#fff;border-radius:14px;padding:10px 12px;display:grid;place-items:center;margin-bottom:8px}
+.logo-card .logo-img{max-width:100%;max-height:70px}
+.brand small{color:#c9c4ee;font-size:12px;letter-spacing:.5px;text-transform:uppercase}
 #nav{display:flex;flex-direction:column;gap:5px}
 #nav a{color:#d3e0f1;text-decoration:none;padding:11px 12px;border-radius:10px;display:flex;gap:10px;align-items:center}
 #nav a:hover{background:rgba(255,255,255,.09)}
 #nav a.active{background:var(--brand);color:#fff;font-weight:600;box-shadow:inset 4px 0 0 var(--brand-accent)}
 .sidebar-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px}
 .whoami{padding:0 4px 8px;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:4px}
-.whoami b{display:block}.whoami small{color:#a9bfdc}
+.whoami b{display:block}.whoami small{color:#c9c4ee}
 main{flex:1;min-width:0;padding:22px 28px 40px}
 .topbar{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap:wrap}
 .topbar h1{font-size:23px;color:var(--brand-dark);border-left:5px solid var(--brand-accent);padding-left:12px;flex:1;min-width:140px}
@@ -100,8 +102,8 @@ td.title-cell{max-width:320px;font-weight:600}
 .pager div{display:flex;gap:8px}
 
 .tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
-.s-Aberto{background:var(--brand)}.s-Em-andamento{background:var(--brand-accent)}.s-Aguardando{background:var(--warn)}.s-Resolvido{background:var(--ok)}.s-Fechado{background:#7b8a9d}
-.p-Baixa{background:#7b8a9d}.p-Média{background:var(--brand)}.p-Alta{background:var(--brand-accent)}.p-Crítica{background:var(--danger)}
+.s-Aberto{background:var(--brand)}.s-Em-andamento{background:var(--orange)}.s-Aguardando{background:var(--warn)}.s-Resolvido{background:var(--ok)}.s-Fechado{background:#7b8a9d}
+.p-Baixa{background:#7b8a9d}.p-Média{background:var(--brand)}.p-Alta{background:var(--orange)}.p-Crítica{background:var(--danger)}
 .sla-ok{color:var(--ok)}.sla-warning{color:#c98400}.sla-breached{color:var(--danger);font-weight:700}
 .role-admin{background:var(--danger)}.role-tech{background:var(--brand)}.role-user{background:#7b8a9d}
 .off{opacity:.5}
@@ -134,7 +136,7 @@ td.title-cell{max-width:320px;font-weight:600}
 .kb-item summary{padding:13px 16px;cursor:pointer;font-weight:600;color:var(--brand-dark);display:flex;gap:10px;align-items:center}
 .kb-item .kb-body{padding:0 16px 14px;white-space:pre-wrap;word-break:break-word}
 .kb-item .kb-actions{padding:0 16px 14px;display:flex;gap:8px}
-.logo-preview{background:var(--brand-dark);padding:12px;border-radius:10px;display:inline-block;margin-bottom:10px}
+.logo-preview{background:#fff;border:1px solid var(--line);padding:12px;border-radius:10px;display:inline-block;margin-bottom:10px}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
 .chip{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 12px;display:flex;align-items:center;gap:6px;font-size:14px}
 .chip button{border:0;background:none;color:var(--danger);cursor:pointer;font-size:16px}

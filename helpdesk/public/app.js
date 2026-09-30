@@ -44,8 +44,7 @@ function applyBrand(b) {
   r.setProperty('--brand-dark', b.color_dark); r.setProperty('--brand', b.color_primary); r.setProperty('--brand-accent', b.color_accent);
   $$('.company-name').forEach(e => e.textContent = b.company);
   document.title = `${b.company} | Helpdesk de TI`;
-  ['sideLogo', 'loginLogo'].forEach(id => { const i = $('#' + id); i.classList.toggle('hidden', !b.logo); if (b.logo) i.src = b.logo; });
-  ['sideMark', 'loginMark'].forEach(id => { const m = $('#' + id); m.classList.toggle('hidden', !!b.logo); m.textContent = (b.company[0] || 'M').toUpperCase(); });
+  ['sideLogo', 'loginLogo'].forEach(id => { const i = $('#' + id); i.src = b.logo || '/logo.png'; i.alt = b.company; });
   $('#showRegister').classList.toggle('hidden', !b.allow_register);
 }
 async function loadBrand() { applyBrand(await api('GET', '/api/branding')); }
@@ -149,11 +148,11 @@ function dailyChart(days) {
   days.forEach((d, i) => {
     const x = pad + i * bw, h1 = d.opened / max * H, h2 = d.resolved / max * H;
     s += `<rect x="${x + 2}" y="${H - h1}" width="${bw / 2 - 3}" height="${h1}" rx="2" fill="var(--brand)"><title>${d.day}: ${d.opened} abertos</title></rect>`;
-    s += `<rect x="${x + bw / 2}" y="${H - h2}" width="${bw / 2 - 3}" height="${h2}" rx="2" fill="var(--brand-accent)"><title>${d.day}: ${d.resolved} resolvidos</title></rect>`;
+    s += `<rect x="${x + bw / 2}" y="${H - h2}" width="${bw / 2 - 3}" height="${h2}" rx="2" fill="var(--ok)"><title>${d.day}: ${d.resolved} resolvidos</title></rect>`;
     if (i % 2 === 0) s += `<text x="${x + bw / 2}" y="${H + 15}" font-size="10" text-anchor="middle" fill="#66768a">${d.day}</text>`;
   });
   s += `<line x1="${pad}" x2="${W}" y1="${H}" y2="${H}" stroke="#e2e8f0"/><text x="0" y="10" font-size="10" fill="#66768a">${max}</text></svg>`;
-  return `<div class="legend"><span><i style="background:var(--brand)"></i>Abertos</span><span><i style="background:var(--brand-accent)"></i>Resolvidos</span></div>${s}`;
+  return `<div class="legend"><span><i style="background:var(--brand)"></i>Abertos</span><span><i style="background:var(--ok)"></i>Resolvidos</span></div>${s}`;
 }
 function rows(items, withReq) {
   return items.map(t => `<tr class="click" data-id="${t.id}"><td>#${t.id}</td><td class="title-cell">${esc(t.title)}</td>${withReq ? `<td>${esc(t.requester_name)}</td>` : ''}<td>${esc(t.category)}</td><td>${tag('p', t.priority)}</td><td>${tag('s', t.status)}</td>${isStaff() ? `<td>${esc(t.assignee_name || '—')}</td>` : ''}<td>${fmt(t.due)}<br>${slaBadge(t)}</td></tr>`).join('');
@@ -385,8 +384,8 @@ async function viewSettings(tok) {
       <h3 style="margin-top:14px">SLA — prazo de resolução (horas)</h3>
       <div class="form-grid">${PRIO.map(p => `<label>${p}<input type="number" min="1" max="1000" step="0.5" name="sla_${p}" value="${s['sla_' + p]}"></label>`).join('')}</div>
       <div class="actions"><button class="btn primary">Salvar configurações</button></div></form>
-    <div class="panel"><h3>Logotipo</h3>${state.brand.logo ? `<div class="logo-preview"><img class="logo-img" src="${state.brand.logo}" alt="Logotipo atual"></div><br>` : '<p class="hint">Nenhum logotipo enviado (exibindo inicial da empresa).</p>'}
-      <input type="file" id="logoFile" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" style="max-width:340px"> ${state.brand.logo ? '<button class="btn danger sm" id="logoDel">Remover</button>' : ''}
+    <div class="panel"><h3>Logotipo</h3><div class="logo-preview"><img class="logo-img" src="${state.brand.logo || '/logo.png'}" alt="Logotipo atual"></div><br>
+      <input type="file" id="logoFile" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" style="max-width:340px"> ${state.brand.logo ? '<button class="btn danger sm" id="logoDel">Restaurar logo padrão</button>' : ''}
       <p class="hint" style="margin-top:6px">PNG, JPG, WEBP, GIF ou SVG, até ~500 KB. Prefira fundo transparente.</p></div>
     <div class="panel"><h3>Categorias de chamado</h3><div class="chips">${cats.map(c => `<span class="chip">${esc(c.name)}<button data-del="${c.id}" title="Remover">×</button></span>`).join('')}</div>
       <form id="catForm" class="toolbar" style="margin:14px 0 0"><input name="name" placeholder="Nova categoria" required maxlength="60" style="max-width:260px"><button class="btn primary">Adicionar</button></form></div>`;

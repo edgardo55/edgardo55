@@ -29,11 +29,11 @@ Acesse http://localhost:3000 (porta alterável com `PORT=8080`). O banco fica em
 - **Base de conhecimento** com busca e sugestão de artigos ao abrir chamado.
 - **Filtros, busca, ordenação, paginação** e exportação **CSV**.
 - **Administração:** usuários, categorias, SLA, auto-cadastro opcional.
-- **Identidade visual:** em *Configurações* envie o logotipo e escolha as cores da MediaNova — o layout inteiro se adapta.
+- **Identidade visual:** em *Configurações* troque o logotipo e as cores — o layout inteiro se adapta (padrão: logo e cores da MediaNova, índigo e vermelho).
 - Responsivo (celular/tablet).
 
 ## Estrutura
 ```
 server.js   API REST + arquivos estáticos     db.js   esquema SQLite, senhas e dados iniciais
-public/     index.html · style.css · app.js
+public/     index.html · style.css · app.js · logo.png
 ```

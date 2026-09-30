@@ -51,7 +51,7 @@ function verifyPassword(pw, stored) {
 }
 const DEFAULT_SETTINGS = {
   company: 'MediaNova',
-  color_dark: '#0b1f3a', color_primary: '#0a84ff', color_accent: '#ff7a1a',
+  color_dark: '#2a2266', color_primary: '#3b3190', color_accent: '#e30613',
   sla_Crítica: '4', sla_Alta: '8', sla_Média: '24', sla_Baixa: '72',
   allow_register: '0', logo: ''
 };
