@@ -1,0 +1,10 @@
+{
+  "name": "medianova-helpdesk",
+  "version": "1.0.0",
+  "description": "Sistema de chamados (Helpdesk) de TI",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=22.5" },
+  "license": "UNLICENSED",
+  "private": true
+}
