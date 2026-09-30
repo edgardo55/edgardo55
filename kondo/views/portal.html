@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portal do morador · Kondo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+body{margin:0}
+.pbar{background:var(--side);color:var(--side-ink);position:sticky;top:0;z-index:20}
+.pbar-in{max-width:1080px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.pbar .brand{padding:0}
+.pbar .who-top{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--side-muted)}
+.pbar .who-top b{color:#fff;font-weight:500}
+.pbar .btn{background:transparent;color:var(--side-ink);border-color:var(--side-active)}
+.ptabs{max-width:1080px;margin:0 auto;padding:0 16px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.ptabs button{all:unset;cursor:pointer;padding:10px 12px;font-size:14px;color:var(--side-muted);border-bottom:2px solid transparent;white-space:nowrap}
+.ptabs button[aria-current="page"]{color:#fff;border-bottom-color:var(--accent)}
+.ptabs button:focus-visible{outline:2px solid var(--accent)}
+.pmain{max-width:1080px;margin:0 auto;padding-block:24px 48px;padding-inline:16px}
+.status{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px}
+.hero{border-radius:14px;padding:20px 22px;border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:6px}
+.hero.ok{background:var(--ok-soft);border-color:transparent}
+.hero.bad{background:var(--bad-soft);border-color:transparent}
+.hero .big{font:600 30px/1.1 var(--display);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.hero.ok .big{color:var(--ok)} .hero.bad .big{color:var(--bad)}
+.paybox{font-size:14px;display:flex;flex-direction:column;gap:6px}
+.paybox .mono{font-size:14px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:6px 8px;overflow-wrap:anywhere}
+.months{display:flex;flex-wrap:wrap;gap:6px}
+.m{font:500 12px var(--mono);padding:4px 8px;border-radius:6px}
+.m.pago{background:var(--ok-soft);color:var(--ok)} .m.atr{background:var(--bad-soft);color:var(--bad)} .m.pend{background:var(--warn-soft);color:var(--warn)}
+.aviso{border-left:3px solid var(--accent);padding:4px 0 4px 12px}
+.aviso h3{font:600 15px var(--display);margin:0}
+.aviso p{margin:4px 0 0;font-size:14px;color:var(--muted);white-space:pre-line}
+@media (max-width:760px){.status{grid-template-columns:1fr}.pbar .who-top span{display:none}}
+</style>
+</head>
+<body>
+<header class="pbar">
+  <div class="pbar-in">
+    <div class="brand"><div class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 21V9l6-4v16M9 21V3l12 5v13M3 21h18M13 10h4M13 14h4M13 18h4"/></svg></div><div><b id="cNome">Kondo</b><small>Portal do morador</small></div></div>
+    <div class="who-top"><span id="uNome"></span><button class="btn small" id="btnSenha">Palavra-passe</button><button class="btn small" id="btnSair">Sair</button></div>
+  </div>
+  <nav class="ptabs" id="tabs" aria-label="Secções"></nav>
+</header>
+<main class="pmain" id="view"><div class="panel"><p class="empty">A carregar…</p></div></main>
+<div id="modalRoot"></div>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf = new Intl.NumberFormat('pt-PT', {maximumFractionDigits:0});
+const kz = v => nf.format(Math.round(+v || 0)) + ' Kz';
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const fmtMes = m => { if (!m) return '—'; const [y,mm] = m.split('-'); return MESES[+mm-1] + ' ' + y; };
+const fmtDate = s => s ? s.split('-').reverse().join('/') : '—';
+const BADGE = {'Aberta':'bad','Em curso':'warn','Resolvida':'ok'};
+const pill = v => `<span class="pill ${BADGE[v] || ''}">${esc(v)}</span>`;
+let D = null, tab = 'inicio';
+try { const h = location.hash.slice(1); if (h) tab = h; } catch (e) {}
+
+async function api(method, url, body) {
+  const r = await fetch(url, { method, headers: body ? {'Content-Type':'application/json'} : {}, body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 401) { location.href = '/login'; throw new Error('Sessão terminada.'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || 'Não foi possível contactar o servidor.');
+  return j;
+}
+let toastT;
+function toast(msg) { let el = document.querySelector('.toast'); if (!el) { el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role','status'); document.body.appendChild(el); } el.textContent = msg; clearTimeout(toastT); toastT = setTimeout(() => el.remove(), 2800); }
+
+const TABS = [['inicio','Início'],['pagamentos','Pagamentos'],['avisos','Avisos'],['ocorrencias','Ocorrências'],['documentos','Documentos'],['perfil','O meu perfil']];
+function renderTabs() {
+  $('tabs').innerHTML = TABS.map(([k, l]) => `<button type="button" data-tab="${k}" ${tab===k?'aria-current="page"':''}>${l}${k==='avisos' && D.avisos.length ? ` <span class="dim">(${D.avisos.length})</span>` : ''}</button>`).join('');
+}
+$('tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; try { history.replaceState(null, '', '#' + tab); } catch (e) {} render(); } });
+
+function mesesGrid() {
+  const m = D.morador, pagos = new Set(D.pagamentos.map(p => p.mes)), atr = new Set(D.divida.meses);
+  const now = new Date(), cur = now.toISOString().slice(0,7);
+  const out = []; let y = now.getFullYear(), mm = now.getMonth() + 1;
+  for (let i = 0; i < 12; i++) { const k = y + '-' + String(mm).padStart(2,'0'); if (!m.desde || k >= m.desde) out.unshift(k); if (--mm < 1) { mm = 12; y--; } }
+  return `<div class="months">${out.map(k => `<span class="m ${pagos.has(k) ? 'pago' : atr.has(k) ? 'atr' : k === cur ? 'pend' : ''}" title="${pagos.has(k) ? 'Pago' : atr.has(k) ? 'Em atraso' : 'Por vencer'}">${fmtMes(k)} ${pagos.has(k) ? '✓' : atr.has(k) ? '!' : '…'}</span>`).join('')}</div>`;
+}
+function payInfo() {
+  const c = D.condominio, m = D.morador;
+  return `<div class="paybox"><b>Como pagar a quota</b>
+    <span class="dim">Quota mensal de ${kz(m.quota)}, a pagar até ao dia ${c.diaVencimento} de cada mês, por Multicaixa Express ou transferência bancária.</span>
+    <span>IBAN do condomínio</span><span class="mono">${esc(c.iban || 'Peça o IBAN à administração')}</span>
+    <span>Descritivo da transferência</span><span class="mono">Quota ${esc(m.fracao)}</span></div>`;
+}
+
+function render() {
+  renderTabs();
+  const m = D.morador, v = $('view');
+  if (tab === 'inicio') {
+    const dv = D.divida;
+    const ocAbertas = D.ocorrencias.filter(o => o.estado !== 'Resolvida');
+    v.innerHTML = `<div class="top"><div><h1>Olá, ${esc(m.nome.split(' ')[0])}</h1><p>Fração <b>${esc(m.fracao)}</b> · ${esc(D.condominio.nome)}</p></div></div>
+    <div class="status">
+      <section class="hero ${dv.total ? 'bad' : 'ok'}"><span class="lbl" style="font-size:12px;text-transform:uppercase;letter-spacing:.06em">Situação das quotas</span>
+        <span class="big">${dv.total ? kz(dv.total) + ' em atraso' : 'Quotas em dia'}</span>
+        <span>${dv.total ? `${dv.meses.length} ${dv.meses.length > 1 ? 'meses' : 'mês'} por pagar: ${dv.meses.map(fmtMes).join(', ')}.` : 'Obrigado por manter as quotas em dia.'}</span>
+        <div style="margin-top:8px">${mesesGrid()}</div>
+        ${pendentes().length ? `<p style="margin:10px 0 0;font-size:14px">A aguardar confirmação: ${pendentes().map(fmtMes).join(', ')}.</p>` : ''}
+        <div style="margin-top:12px"><button class="btn primary" data-pagar>Comunicar pagamento</button></div></section>
+      <section class="panel">${payInfo()}</section>
+    </div>
+    <div class="grid3" style="margin-top:0">
+      <section class="panel"><h2>Avisos recentes <small><button class="btn small" data-go="avisos">Ver todos</button></small></h2>
+        ${D.avisos.length ? `<div style="display:flex;flex-direction:column;gap:12px">${D.avisos.slice(0,3).map(a => `<div class="aviso"><h3>${esc(a.titulo)}</h3><p>${fmtDate(a.data)} · ${esc(a.mensagem)}</p></div>`).join('')}</div>` : '<p class="empty">Sem avisos.</p>'}</section>
+      <section class="panel"><h2>As minhas ocorrências <small><button class="btn small primary" data-nova>Reportar</button></small></h2>
+        ${ocAbertas.length ? `<ul class="list">${ocAbertas.map(o => `<li><span>${esc(o.titulo)}<br><span class="meta">${fmtDate(o.data)}</span></span>${pill(o.estado)}</li>`).join('')}</ul>` : '<p class="empty">Nenhuma ocorrência em aberto.</p>'}</section>
+      <section class="panel"><h2>Portaria e segurança</h2>
+        ${D.portaria.length ? `<ul class="list">${D.portaria.map(f => `<li><span>${esc(f.nome)}<br><span class="meta">${esc(f.funcao)} · turno ${esc(f.turno || '').toLowerCase()}</span></span><span class="mono" style="font-size:13px">${esc(f.telefone || '')}</span></li>`).join('')}</ul>` : '<p class="empty">Sem contactos registados.</p>'}</section>
+    </div>`;
+  } else if (tab === 'pagamentos') {
+    v.innerHTML = `<div class="top"><div><h1>Pagamentos</h1><p>Recibos de quotas registados pela administração para a fração ${esc(m.fracao)}.</p></div></div>
+    ${D.comunicacoes.length ? `<section class="panel" style="margin-bottom:16px"><h2>Pagamentos comunicados</h2><ul class="list">${D.comunicacoes.slice(0, 6).map(c => `<li><span>${c.meses.map(fmtMes).join(', ')} · ${kz(c.valor)}<br><span class="meta">Enviado em ${fmtDate((c.criado || '').slice(0,10))} · ${esc(c.metodo)}${c.motivo ? ' · Motivo: ' + esc(c.motivo) : ''}</span></span><span class="pill ${c.estado === 'Confirmado' ? 'ok' : c.estado === 'Rejeitado' ? 'bad' : 'warn'}">${c.estado === 'Pendente' ? 'A aguardar confirmação' : esc(c.estado)}</span></li>`).join('')}</ul></section>` : ''}
+    <div class="grid2"><div class="tablewrap"><table><thead><tr><th>Mês</th><th>Data</th><th>Método</th><th>N.º</th><th class="num">Valor</th><th></th></tr></thead><tbody>
+      ${D.pagamentos.length ? D.pagamentos.map(p => `<tr><td><b>${fmtMes(p.mes)}</b></td><td class="dim">${fmtDate(p.data)}</td><td>${esc(p.metodo || '')}</td><td class="mono">${esc(p.referencia || '')}</td><td class="num">${kz(p.valor)}</td><td><a href="/recibo/${esc(p.id)}" target="_blank" rel="noopener">Recibo</a></td></tr>`).join('') : '<tr><td colspan="6" class="empty" style="padding:20px 14px">Ainda não há pagamentos registados.</td></tr>'}
+    </tbody></table></div><section class="panel">${payInfo()}<p class="dim" style="font-size:13px;margin:12px 0">Depois de pagar, comunique o pagamento com o comprovativo. A administração confirma e o recibo fica disponível nesta lista.</p><button class="btn primary" data-pagar>Comunicar pagamento</button></section></div>`;
+  } else if (tab === 'avisos') {
+    v.innerHTML = `<div class="top"><div><h1>Avisos</h1><p>Comunicados da administração.</p></div></div>
+    ${D.avisos.length ? `<div class="cards">${D.avisos.map(a => `<article class="card" style="cursor:default"><div class="row" style="margin:0;padding:0"><span>${fmtDate(a.data)} · ${esc(a.destinatarios)}</span>${a.fixado === 'Sim' ? '<span class="pill info">Importante</span>' : ''}</div><h3>${esc(a.titulo)}</h3><p style="white-space:pre-line">${esc(a.mensagem)}</p></article>`).join('')}</div>` : '<div class="panel"><p class="empty">Sem avisos.</p></div>'}`;
+  } else if (tab === 'ocorrencias') {
+    v.innerHTML = `<div class="top"><div><h1>Ocorrências</h1><p>Avarias, queixas e incidentes que reportou ou que envolvem a sua fração.</p></div><div class="actions"><button class="btn primary" data-nova>Reportar ocorrência</button></div></div>
+    <div class="tablewrap"><table><thead><tr><th>Data</th><th>Ocorrência</th><th>Categoria</th><th>Estado</th></tr></thead><tbody>
+      ${D.ocorrencias.length ? D.ocorrencias.map(o => `<tr><td class="dim">${fmtDate(o.data)}</td><td><b>${esc(o.titulo)}</b>${o.descricao ? `<br><span class="dim" style="font-size:13px">${esc(o.descricao)}</span>` : ''}</td><td>${esc(o.categoria || '')}</td><td>${pill(o.estado)}</td></tr>`).join('') : '<tr><td colspan="4" class="empty" style="padding:20px 14px">Nenhuma ocorrência.</td></tr>'}
+    </tbody></table></div>`;
+  } else if (tab === 'documentos') {
+    v.innerHTML = `<div class="top"><div><h1>Documentos</h1><p>Regulamento, actas e relatórios partilhados pela administração.</p></div></div>
+    <div class="tablewrap"><table><thead><tr><th>Data</th><th>Documento</th><th>Tipo</th><th></th></tr></thead><tbody>
+      ${D.documentos.length ? D.documentos.map(d => `<tr><td class="dim">${fmtDate(d.data)}</td><td><b>${esc(d.nome)}</b></td><td>${esc(d.tipo || '')}</td><td>${d.ficheiroId ? `<a href="/ficheiros/${esc(d.ficheiroId)}" target="_blank" rel="noopener">Abrir</a>` : '<span class="dim">Sem ficheiro</span>'}</td></tr>`).join('') : '<tr><td colspan="4" class="empty" style="padding:20px 14px">Sem documentos partilhados.</td></tr>'}
+    </tbody></table></div>`;
+  } else {
+    const ed = k => D.editaveis.includes(k);
+    v.innerHTML = `<div class="top"><div><h1>O meu perfil</h1><p>Mantenha os seus contactos atualizados. Para mudar o nome, a fração ou a quota, fale com a administração.</p></div></div>
+    <div class="grid2"><section class="panel"><h2>Contactos e agregado</h2>
+      <form id="pfForm" style="display:grid;grid-template-columns:1fr 1fr;gap:12px 14px">
+        <div class="field"><label for="pTel">Telefone</label><input id="pTel" type="tel" value="${esc(m.telefone)}" ${ed('telefone')?'':'disabled'}></div>
+        <div class="field"><label for="pEmail">Email de contacto</label><input id="pEmail" type="email" value="${esc(m.email)}"></div>
+        <div class="field full"><label for="pEm">Contacto de emergência</label><input id="pEm" value="${esc(m.emergencia)}" placeholder="Nome e telefone"></div>
+        <div class="field"><label for="pAg">Pessoas no agregado</label><input id="pAg" type="number" min="0" max="30" value="${esc(m.agregado)}"></div>
+        <div class="field"><label for="pVi">Matrículas das viaturas</label><input id="pVi" value="${esc(m.viaturas)}" placeholder="LD-12-34-AB"></div>
+        <div class="field full" style="flex-direction:row;justify-content:flex-end"><button class="btn primary" type="submit">Guardar alterações</button></div>
+      </form></section>
+      <section class="panel"><h2>Dados da fração</h2><dl class="dl">
+        <dt>Nome</dt><dd>${esc(m.nome)}</dd><dt>Fração</dt><dd>${esc(m.fracao)} · Bloco ${esc(m.bloco || '—')}</dd>
+        <dt>Tipologia</dt><dd>${esc(m.tipologia || '—')}</dd><dt>Tipo</dt><dd>${esc(m.tipo || '—')}</dd>
+        <dt>Quota mensal</dt><dd>${kz(m.quota)}</dd><dt>N.º do BI</dt><dd class="mono">${esc(m.bi || '—')}</dd>
+        <dt>Email de acesso</dt><dd>${esc(D.eu.email)}</dd></dl></section></div>`;
+    $('pfForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      try {
+        await api('PUT', '/api/portal/perfil', { telefone: $('pTel').value, email: $('pEmail').value, emergencia: $('pEm').value, agregado: $('pAg').value, viaturas: $('pVi').value });
+        await load(); toast('Perfil atualizado');
+      } catch (err) { toast(err.message); }
+    });
+  }
+}
+
+function modal(title, inner) {
+  $('modalRoot').innerHTML = `<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><header><h2 id="mt">${esc(title)}</h2><button class="x" type="button" data-close aria-label="Fechar">✕</button></header>${inner}</div></div>`;
+  const f = document.querySelector('#modalRoot input,#modalRoot select'); if (f) f.focus();
+}
+const closeModal = () => { $('modalRoot').innerHTML = ''; };
+const showErr = err => { const e2 = $('mErr'); e2.hidden = false; e2.textContent = err.message; };
+function novaOcorrencia() {
+  modal('Reportar ocorrência', `<form id="ocForm">
+    <div class="field full"><label for="oT">O que aconteceu?</label><input id="oT" required maxlength="120" placeholder="Ex.: Lâmpada fundida no 2.º andar"></div>
+    <div class="field full"><label for="oC">Categoria</label><select id="oC">${['Infraestrutura','Segurança','Convivência','Estacionamento','Limpeza','Outro'].map(c => `<option>${c}</option>`).join('')}</select></div>
+    <div class="field full"><label for="oD">Detalhes (opcional)</label><textarea id="oD" maxlength="2000"></textarea></div>
+    <p class="field full" id="mErr" style="color:var(--bad);margin:0" hidden></p>
+    <footer><span></span><div><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Enviar à administração</button></div></footer></form>`);
+  $('ocForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    try { await api('POST', '/api/portal/ocorrencias', { titulo: $('oT').value, categoria: $('oC').value, descricao: $('oD').value }); closeModal(); await load(); toast('Ocorrência enviada à administração'); }
+    catch (err) { showErr(err); }
+  });
+}
+const pendentes = () => D.comunicacoes.filter(c => c.estado === 'Pendente').flatMap(c => c.meses);
+function comunicarPagamento() {
+  const m = D.morador, pagos = new Set(D.pagamentos.map(p => p.mes)), pend = new Set(pendentes());
+  // Meses em atraso, o mês atual e o seguinte (pagamento adiantado), sem os já pagos ou já comunicados
+  const cur = new Date().toISOString().slice(0,7); const [y, mm] = cur.split('-').map(Number);
+  const prox = mm === 12 ? (y + 1) + '-01' : y + '-' + String(mm + 1).padStart(2, '0');
+  const opcoes = [...new Set([...D.divida.meses, cur, prox])].filter(x => !pagos.has(x) && !pend.has(x) && (!m.desde || x >= m.desde)).sort();
+  if (!opcoes.length) return toast('Não há meses por pagar para comunicar.');
+  modal('Comunicar pagamento', `<form id="cpForm">
+    <div class="field full"><label>Meses que pagou</label><div class="opts">${opcoes.map(x => `<label class="opt"><input type="checkbox" name="mes" value="${x}" ${D.divida.meses.includes(x) ? 'checked' : ''}> ${fmtMes(x)}</label>`).join('')}</div></div>
+    <div class="field"><label for="cpV">Valor pago (Kz)</label><input id="cpV" type="number" min="1" step="1" required></div>
+    <div class="field"><label for="cpD">Data do pagamento</label><input id="cpD" type="date" required value="${new Date().toISOString().slice(0,10)}"></div>
+    <div class="field"><label for="cpM">Método</label><select id="cpM">${['Multicaixa Express','Transferência BAI','Transferência BFA','Transferência BIC','Depósito BIC','Numerário','Outro'].map(x => `<option>${x}</option>`).join('')}</select></div>
+    <div class="field"><label for="cpR">Referência da operação</label><input id="cpR" maxlength="60" placeholder="N.º do talão ou transação"></div>
+    <div class="field full"><label for="cpF">Comprovativo (PDF ou imagem, até 5 MB)</label><input id="cpF" type="file" accept=".pdf,image/*"></div>
+    <p class="field full" id="mErr" style="color:var(--bad);margin:0" hidden></p>
+    <footer><span></span><div><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit" id="cpGo">Enviar à administração</button></div></footer></form>`);
+  const f = $('cpForm'), sel = () => [...f.querySelectorAll('input[name=mes]:checked')].map(i => i.value);
+  const upd = () => { $('cpV').value = sel().length * (+m.quota || 0) || ''; }; upd();
+  f.addEventListener('change', e => { if (e.target.name === 'mes') upd(); });
+  f.addEventListener('submit', async e => {
+    e.preventDefault();
+    const meses = sel(); if (!meses.length) return showErr(new Error('Escolha pelo menos um mês.'));
+    const file = $('cpF').files[0];
+    if (file && file.size > 5e6) return showErr(new Error('O comprovativo deve ter até 5 MB.'));
+    $('cpGo').disabled = true; $('cpGo').textContent = 'A enviar…';
+    try {
+      const comprovativo = file ? await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res({nome: file.name, tipo: file.type, base64: String(r.result).split(',')[1]}); r.onerror = () => rej(new Error('Não foi possível ler o ficheiro.')); r.readAsDataURL(file); }) : null;
+      await api('POST', '/api/portal/pagamentos', { meses, valor: +$('cpV').value, data: $('cpD').value, metodo: $('cpM').value, referencia: $('cpR').value, comprovativo });
+      closeModal(); await load(); toast('Pagamento comunicado. A administração vai confirmar.');
+    } catch (err) { showErr(err); $('cpGo').disabled = false; $('cpGo').textContent = 'Enviar à administração'; }
+  });
+}
+function alterarSenha() {
+  modal('Alterar palavra-passe', `<form id="pwForm">
+    <div class="field full"><label for="pwA">Palavra-passe atual</label><input id="pwA" type="password" autocomplete="current-password" required></div>
+    <div class="field"><label for="pwN">Nova (mín. 8 caracteres)</label><input id="pwN" type="password" autocomplete="new-password" minlength="8" required></div>
+    <div class="field"><label for="pwN2">Repetir nova</label><input id="pwN2" type="password" autocomplete="new-password" minlength="8" required></div>
+    <p class="field full" id="mErr" style="color:var(--bad);margin:0" hidden></p>
+    <footer><span></span><div><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></footer></form>`);
+  $('pwForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    if ($('pwN').value !== $('pwN2').value) return showErr(new Error('As duas palavras-passe novas não coincidem.'));
+    try { await api('POST', '/api/senha', { atual: $('pwA').value, nova: $('pwN').value }); closeModal(); toast('Palavra-passe alterada'); } catch (err) { showErr(err); }
+  });
+}
+document.addEventListener('click', e => {
+  if (e.target.id === 'ov' || e.target.closest('[data-close]')) return closeModal();
+  if (e.target.closest('[data-nova]')) return novaOcorrencia();
+  if (e.target.closest('[data-pagar]')) return comunicarPagamento();
+  const g = e.target.closest('[data-go]'); if (g) { tab = g.dataset.go; render(); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+$('btnSenha').onclick = alterarSenha;
+$('btnSair').onclick = async () => { try { await fetch('/api/logout', {method:'POST'}); } finally { location.href = '/login'; } };
+
+async function load() {
+  D = await api('GET', '/api/portal');
+  $('cNome').textContent = D.condominio.nome || 'Kondo';
+  $('uNome').innerHTML = `<b>${esc(D.morador.nome)}</b> · ${esc(D.morador.fracao)}`;
+  render();
+}
+load().then(() => {
+  const aviso = sessionStorage.getItem('kondo_aviso'); if (aviso) { sessionStorage.removeItem('kondo_aviso'); toast(aviso); }
+}, err => { $('view').innerHTML = `<div class="panel"><p class="empty">${esc(err.message)}</p></div>`; });
+})();
+</script>
+</body>
+</html>
