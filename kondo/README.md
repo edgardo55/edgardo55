@@ -54,3 +54,8 @@ deploy/            Caddyfile (php-fpm) e backup.sh
 - **Pagamento por ordem**: os meses são atribuídos a começar no mais antigo em dívida; não se paga um mês sem liquidar os anteriores (vale também para os pagamentos comunicados no portal).
 - **Cobrança**: em *Dívidas* (ou na ficha do morador) o administrador envia a mensagem por WhatsApp, SMS ou para os Avisos do portal do morador.
 - **Importar moradores**: em *Gestão de moradores → Importar Excel* (.xlsx ou .csv). Colunas: Nome (obrigatória), Fração, Bloco, Telefone, Email, Tipo.
+
+## Prédios, pacotes e quotas
+
+- O dono do sistema (área `/plataforma`) regista cada **prédio** com o seu administrador e define o **preço mensal do prédio** entre 35 000 e 75 000 Kz (editável em *Gerir*). É esse valor que o prédio paga ao Kondo.
+- Em cada prédio, o administrador define a **quota dos moradores** (10 000 Kz por omissão, alterável nas Definições). As duas coisas são independentes.

@@ -254,7 +254,7 @@ route('DELETE', '/api/admin/utilizadores/:id', function ($c) {
 route('GET', '/api/admin/assinatura', function ($c) {
     $cid = $c['user']['condo_id']; $co = condoOf($cid);
     $faturas = array_map(fn($f) => ['estado' => faturaEstado($f)] + $f, rows('SELECT * FROM faturas WHERE condo_id = ? ORDER BY periodo DESC', [$cid]));
-    send(200, ['plano' => $co['plano'], 'estado' => $co['estado'], 'fracoesAtivas' => count(array_filter(lista($cid, 'moradores'), 'isAtivo')), 'planos' => planosLista(), 'faturas' => $faturas]);
+    send(200, ['plano' => $co['plano'], 'preco' => precoCondo($co), 'estado' => $co['estado'], 'fracoesAtivas' => count(array_filter(lista($cid, 'moradores'), 'isAtivo')), 'planos' => planosLista(), 'faturas' => $faturas]);
 }, 'admin');
 route('POST', '/api/admin/assinatura/plano', function ($c) {
     $u = $c['user']; $plano = str(readJson(10000)['plano'] ?? '');
@@ -452,7 +452,7 @@ function resumoPlataforma(): array {
         $info = planoInfo($c['plano']);
         $fs = array_filter($faturas, fn($f) => $f['condo_id'] === $c['id']);
         return ['id' => $c['id'], 'nome' => $c['nome'], 'nif' => $c['nif'], 'contacto' => $c['contacto'], 'plano' => $c['plano'], 'estado' => $c['estado'], 'criado' => $c['criado'],
-            'preco' => $info['preco'], 'limite' => $info['limite'], 'fracoes' => count(array_filter($mor, 'isAtivo')),
+            'preco' => precoCondo($c), 'limite' => $info['limite'], 'fracoes' => count(array_filter($mor, 'isAtivo')),
             'moradoresComAcesso' => count(array_filter($us, fn($x) => $x['papel'] === 'morador' && $x['ativo'])),
             'admins' => array_map('publicUser', array_values(array_filter($us, fn($x) => $x['papel'] === 'admin'))),
             'ultimaAtividade' => scalar('SELECT MAX(t) FROM historico WHERE condo_id = ?', [$c['id']]),
@@ -467,10 +467,11 @@ route('POST', '/api/plataforma/condominios', function () {
     if ($nome === '') fail(400, 'Indique o nome do condomínio.');
     if ($adminNome === '') fail(400, 'Indique o nome do administrador.');
     if (!isset(PLANOS[str($b['plano'] ?? '')])) fail(400, 'Escolha um plano.');
+    $preco = validarPreco($b['preco'] ?? 0);
     $id = newId('c_'); $pdo = db();
     $pdo->beginTransaction();
     try {
-        run('INSERT INTO condominios (id, nome, criado, estado, plano, nif, contacto) VALUES (?, ?, ?, ?, ?, ?, ?)', [$id, $nome, nowIso(), 'Ativo', $b['plano'], str($b['nif'] ?? '') ?: null, str($b['contacto'] ?? '') ?: null]);
+        run('INSERT INTO condominios (id, nome, criado, estado, plano, nif, contacto, preco) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [$id, $nome, nowIso(), 'Ativo', $b['plano'], str($b['nif'] ?? '') ?: null, str($b['contacto'] ?? '') ?: null, $preco]);
         putRec($id, 'config', ['id' => 'geral', 'nome' => $nome, 'morada' => str($b['morada'] ?? ''), 'nif' => str($b['nif'] ?? ''), 'iban' => '', 'diaVencimento' => 10, 'inicio' => curMonth(), 'plano' => $b['plano'], 'quotaPadrao' => QUOTA_PADRAO]);
         $r = criarUtilizador($id, 'admin', $b['adminEmail'] ?? '', $adminNome);
         emitirFatura($id, curMonth());
@@ -487,6 +488,11 @@ route('PATCH', '/api/plataforma/condominios/:id', function ($c) {
         run('UPDATE condominios SET estado = ? WHERE id = ?', [$b['estado'], $co['id']]);
         if ($b['estado'] === 'Suspenso') run("DELETE FROM sessoes WHERE user_id IN (SELECT id FROM utilizadores WHERE condo_id = ? AND papel = 'morador')", [$co['id']]);
         logAcao($co['id'], null, 'Alterou', 'Plataforma: condomínio ' . ($b['estado'] === 'Ativo' ? 'reativado' : 'suspenso'));
+    }
+    if (isset($b['preco'])) {
+        $preco = validarPreco($b['preco']);
+        run('UPDATE condominios SET preco = ? WHERE id = ?', [$preco, $co['id']]);
+        logAcao($co['id'], null, 'Alterou', 'Plataforma: preço mensal do prédio ' . kz(precoCondo($co)) . ' → ' . kz($preco) . ' (a partir da próxima fatura)');
     }
     if (!empty($b['plano'])) {
         if (!isset(PLANOS[str($b['plano'])])) fail(400, 'Plano desconhecido.');

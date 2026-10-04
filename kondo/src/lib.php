@@ -15,6 +15,15 @@ const PLANOS = [
     'Profissional' => ['preco' => 35000, 'limite' => 120],
     'Empresarial' => ['preco' => 75000, 'limite' => null],
 ];
+// Cada prédio paga à plataforma um preço mensal próprio, entre PRECO_MIN e PRECO_MAX (sem preço próprio, vale o do plano).
+const PRECO_MIN = 35000;
+const PRECO_MAX = 75000;
+function precoCondo(array $c): int { return (int)($c['preco'] ?: planoInfo($c['plano'])['preco']); }
+function validarPreco(mixed $v): int {
+    $p = (int)round((float)num($v));
+    if ($p < PRECO_MIN || $p > PRECO_MAX) throw bad('O preço mensal do prédio deve estar entre ' . kz(PRECO_MIN) . ' e ' . kz(PRECO_MAX) . '.');
+    return $p;
+}
 function planoInfo(?string $p): array { return PLANOS[$p] ?? PLANOS['Profissional']; }
 function planosLista(): array {
     $o = [];
@@ -85,6 +94,7 @@ SQL);
     $addCol('condominios', 'plano', "TEXT NOT NULL DEFAULT 'Profissional'");
     $addCol('condominios', 'nif', 'TEXT');
     $addCol('condominios', 'contacto', 'TEXT');
+    $addCol('condominios', 'preco', 'INTEGER'); // preço mensal da assinatura deste prédio (definido pela plataforma)
 }
 
 /* ---------------- Utilitários ---------------- */
@@ -306,13 +316,13 @@ function reporSenha(array $u): string {
 }
 function faturaEstado(array $f): string { return $f['estado'] === 'Pendente' && $f['vence'] < today() ? 'Em atraso' : $f['estado']; }
 function emitirFatura(string $condo, string $periodo): void {
-    $c = condoOf($condo); $info = planoInfo($c['plano']);
+    $c = condoOf($condo);
     [$y, $m] = explode('-', $periodo);
     // Vence no dia 15 do mês, mas nunca menos de 10 dias depois de emitida (clientes novos a meio do mês).
     $minimo = gmdate('Y-m-d', time() + 10 * 86400);
     $vence = ("$y-$m-15" < $minimo && $periodo >= curMonth()) ? $minimo : "$y-$m-15";
     run('INSERT OR IGNORE INTO faturas (id, condo_id, periodo, plano, valor, estado, emitida, vence, referencia) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [newId('ft_'), $condo, $periodo, $c['plano'], $info['preco'], 'Pendente', nowIso(), $vence, "KND-$y$m-" . strtoupper(bin2hex(random_bytes(3)))]);
+        [newId('ft_'), $condo, $periodo, $c['plano'], precoCondo($c), 'Pendente', nowIso(), $vence, "KND-$y$m-" . strtoupper(bin2hex(random_bytes(3)))]);
 }
 function descrever(string $condo, string $col, array $r): string {
     $nomes = ['config' => 'Definições', 'moradores' => 'Morador', 'pagamentos' => 'Pagamento', 'despesas' => 'Despesa', 'funcionarios' => 'Funcionário', 'ocorrencias' => 'Ocorrência', 'manutencao' => 'Manutenção', 'documentos' => 'Documento', 'cameras' => 'Câmara', 'avisos' => 'Aviso', 'comunicacoes' => 'Comunicação de pagamento'];

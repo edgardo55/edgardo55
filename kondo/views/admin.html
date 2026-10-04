@@ -651,7 +651,7 @@ function renderDefinicoes() {
     const atraso = a.faturas.filter(f => f.estado === 'Em atraso');
     el.innerHTML = `<h2>Assinatura Kondo <small>Faturação mensal em kwanzas · Multicaixa Express ou transferência</small></h2>
       ${atraso.length ? `<div class="banner" style="border-color:var(--bad);background:var(--bad-soft)">Tem ${atraso.length} fatura${atraso.length>1?'s':''} em atraso (${kz(atraso.reduce((s,f)=>s+f.valor,0))}). Sem regularização, a assinatura pode ser suspensa.</div>` : ''}
-      <div class="plans">${a.planos.map(p => `<div class="plan ${a.plano===p.nome?'cur':''}"><b>${p.nome}</b><span class="price">${kz(p.preco)}<span class="dim" style="font:400 13px var(--body)"> / mês</span></span>
+      <div class="plans">${a.planos.map(p => `<div class="plan ${a.plano===p.nome?'cur':''}"><b>${p.nome}</b><span class="price">${kz(a.plano===p.nome && a.preco ? a.preco : p.preco)}<span class="dim" style="font:400 13px var(--body)"> / mês</span></span>
         <span class="dim" style="font-size:13px">${p.limite ? 'até ' + p.limite + ' frações' : 'frações ilimitadas'}</span><ul>${(PLANO_TXT[p.nome]||[]).map(x => `<li>${x}</li>`).join('')}</ul>
         ${a.plano===p.nome ? '<span class="pill ok" style="align-self:flex-start;margin-top:6px">Plano atual</span>' : (p.limite && a.fracoesAtivas > p.limite) ? `<span class="dim" style="font-size:12px;margin-top:6px">Tem ${a.fracoesAtivas} frações ativas</span>` : `<button class="btn small" style="align-self:flex-start;margin-top:6px" data-plano="${p.nome}">Mudar para ${p.nome}</button>`}</div>`).join('')}</div>
       <h2 style="margin-top:20px">Faturas</h2>
