@@ -126,6 +126,7 @@ function novoCondominio() {
     <div class="field full"><label for="nMo">Morada</label><input id="nMo" placeholder="Bairro, município, província"></div>
     <div class="field"><label for="nNif">NIF</label><input id="nNif"></div>
     <div class="field"><label for="nP">Plano</label><select id="nP">${D.planos.map(p => `<option value="${esc(p.nome)}" ${p.nome==='Profissional'?'selected':''}>${esc(p.nome)} · ${kz(p.preco)}/mês</option>`).join('')}</select></div>
+    <div class="field"><label for="nPr">Preço mensal do prédio (Kz, 35 000 a 75 000)</label><input id="nPr" type="number" min="35000" max="75000" step="1000" value="35000" required></div>
     <div class="field full sec">Administrador do condomínio</div>
     <div class="field"><label for="nAN">Nome</label><input id="nAN" required></div>
     <div class="field"><label for="nAE">Email</label><input id="nAE" type="email" required></div>
@@ -134,7 +135,7 @@ function novoCondominio() {
   $('ncForm').addEventListener('submit', async e => {
     e.preventDefault();
     try {
-      const j = await api('POST', '/api/plataforma/condominios', { nome: $('nN').value.trim(), morada: $('nMo').value, nif: $('nNif').value.trim(), plano: $('nP').value, adminNome: $('nAN').value.trim(), adminEmail: $('nAE').value.trim(), contacto: $('nC').value.trim() });
+      const j = await api('POST', '/api/plataforma/condominios', { nome: $('nN').value.trim(), morada: $('nMo').value, nif: $('nNif').value.trim(), plano: $('nP').value, preco: +$('nPr').value, adminNome: $('nAN').value.trim(), adminEmail: $('nAE').value.trim(), contacto: $('nC').value.trim() });
       await load(); credenciais(j.utilizador, j.senha_temporaria, $('nN') ? $('nN').value : 'condomínio');
     } catch (err) { showErr(err); }
   });
@@ -144,19 +145,20 @@ function gerir(id) {
   const fs = D.faturas.filter(f => f.condo_id === id);
   modal(c.nome, `<form id="gForm">
     <div class="field"><label for="gP">Plano</label><select id="gP">${D.planos.map(p => `<option value="${esc(p.nome)}" ${p.nome===c.plano?'selected':''}>${esc(p.nome)} · ${kz(p.preco)}/mês</option>`).join('')}</select></div>
+    <div class="field"><label for="gPr">Preço mensal do prédio (Kz)</label><input id="gPr" type="number" min="35000" max="75000" step="1000" value="${c.preco}" required></div>
     <div class="field"><label>Estado</label><div style="display:flex;gap:8px;align-items:center"><span class="pill ${c.estado==='Ativo'?'ok':'bad'}">${esc(c.estado)}</span><button class="btn small ${c.estado==='Ativo'?'danger':''}" type="button" id="gE">${c.estado==='Ativo'?'Suspender':'Reativar'}</button></div></div>
     <p class="field full dim" style="margin:0;font-size:13px">Suspender fecha o portal dos moradores e deixa os administradores só em modo de consulta, até reativar.</p>
     <div class="field full sec">Administradores</div>
     <ul class="list field full">${c.admins.map(a => `<li><span><b>${esc(a.nome)}</b><br><span class="meta">${esc(a.email)} · última entrada ${a.ultimo_login ? fmtDate(a.ultimo_login) : 'nunca'}</span></span><button class="btn small" type="button" data-repor="${a.id}">Repor senha</button></li>`).join('')}</ul>
     <div class="field full sec">Faturas</div>
     <ul class="list field full">${fs.length ? fs.slice(0,6).map(f => `<li><span>${fmtMes(f.periodo)} · ${esc(f.referencia)}</span><span><span class="pill ${FPILL[f.estado] ?? ''}">${esc(f.estado)}</span> <span class="num">${kz(f.valor)}</span></span></li>`).join('') : '<li class="dim">Sem faturas.</li>'}</ul>
-    ${errBox}<footer><span></span><div><button class="btn" type="button" data-close>Fechar</button><button class="btn primary" type="submit">Guardar plano</button></div></footer></form>`);
+    ${errBox}<footer><span></span><div><button class="btn" type="button" data-close>Fechar</button><button class="btn primary" type="submit">Guardar</button></div></footer></form>`);
   $('gE').onclick = async () => {
     try { await api('PATCH', `/api/plataforma/condominios/${id}`, {estado: c.estado === 'Ativo' ? 'Suspenso' : 'Ativo'}); await load(); gerir(id); toast(c.estado === 'Ativo' ? 'Condomínio suspenso' : 'Condomínio reativado'); } catch (err) { showErr(err); }
   };
   $('gForm').addEventListener('submit', async e => {
     e.preventDefault();
-    try { await api('PATCH', `/api/plataforma/condominios/${id}`, {plano: $('gP').value}); await load(); closeModal(); toast('Plano atualizado'); } catch (err) { showErr(err); }
+    try { await api('PATCH', `/api/plataforma/condominios/${id}`, {plano: $('gP').value, preco: +$('gPr').value}); await load(); closeModal(); toast('Plano e preço atualizados'); } catch (err) { showErr(err); }
   });
 }
 function alterarSenha() {

@@ -67,11 +67,13 @@ route('POST', '/api/senha', function ($c) {
 /* ---- Área administrativa ---- */
 route('GET', '/api/admin/dados', function ($c) {
     $u = $c['user']; $out = [];
+    $cfg0 = getRec($u['condo_id'], 'config', 'geral');
+    if ($cfg0 && empty($cfg0['quotaPadrao'])) definirQuota($u['condo_id'], QUOTA_PADRAO); // primeira vez: todos passam a pagar a quota padrão
     foreach (COLS as $col) $out[$col] = lista($u['condo_id'], $col);
     $out['utilizadores'] = array_map('publicUser', rows('SELECT * FROM utilizadores WHERE condo_id = ? ORDER BY papel, nome', [$u['condo_id']]));
     $out['pedidos'] = rows('SELECT p.id, p.t, p.user_id FROM pedidos_senha p JOIN utilizadores u ON u.id = p.user_id WHERE u.condo_id = ? AND p.resolvido = 0 ORDER BY p.t', [$u['condo_id']]);
     $co = condoOf($u['condo_id']);
-    $out['condominio'] = ['estado' => $co['estado'], 'plano' => $co['plano'], 'limite' => planoInfo($co['plano'])['limite']];
+    $out['condominio'] = ['estado' => $co['estado'], 'plano' => $co['plano'], 'limite' => planoInfo($co['plano'])['limite'], 'quotaPadrao' => quotaPadrao($u['condo_id'])];
     $out['eu'] = publicUser($u);
     send(200, $out);
 }, 'admin');
@@ -81,6 +83,14 @@ route('PUT', '/api/admin/reg/:col/:id', function ($c) {
     if (!preg_match('/^[\w-]{1,64}$/', $p['id'])) fail(400, 'Identificador inválido.');
     $body = readJson(); unset($body['id']);
     $antes = getRec($u['condo_id'], $p['col'], $p['id']);
+    if ($p['col'] === 'pagamentos') {
+        // Pagamentos novos só pela rota própria (que impõe a ordem dos meses); nos existentes só se corrige método, data e referências.
+        if (!$antes) fail(400, 'Use "Registar pagamento": o sistema atribui os meses por ordem, do mais antigo em dívida para a frente.');
+        $body = array_merge($antes, array_intersect_key($body, array_flip(['metodo', 'data', 'referencia', 'operacao'])));
+        unset($body['id']);
+    }
+    if ($p['col'] === 'moradores') $body['quota'] = quotaPadrao($u['condo_id']); // todos pagam a quota padrão
+    if ($p['col'] === 'config' && $antes) { if (isset($antes['quotaPadrao'])) $body['quotaPadrao'] = $antes['quotaPadrao']; else unset($body['quotaPadrao']); } // só pela rota própria
     if ($p['col'] === 'moradores' && isAtivo($body) && !($antes && isAtivo($antes))) {
         $co = condoOf($u['condo_id']); $lim = planoInfo($co['plano'])['limite'];
         $n = count(array_filter(lista($u['condo_id'], 'moradores'), fn($m) => $m['id'] !== $p['id'] && isAtivo($m)));
@@ -108,6 +118,72 @@ route('GET', '/api/admin/historico', function ($c) {
     send(200, rows('SELECT h.t, h.acao, h.descr, u.nome AS quem FROM historico h LEFT JOIN utilizadores u ON u.id = h.user_id WHERE h.condo_id = ? ORDER BY h.id DESC LIMIT 300', [$c['user']['condo_id']]));
 }, 'admin');
 
+// Quota mensal padrão (só administradores)
+route('POST', '/api/admin/quota', function ($c) {
+    $u = $c['user']; $v = (int)round((float)num(readJson(10000)['valor'] ?? 0));
+    if ($v < 100 || $v > 100000000) fail(400, 'Indique um valor de quota válido.');
+    $antes = quotaPadrao($u['condo_id']);
+    definirQuota($u['condo_id'], $v);
+    logAcao($u['condo_id'], $u['id'], 'Alterou', 'Quota mensal padrão: ' . kz($antes) . ' → ' . kz($v));
+    send(200, ['ok' => true, 'quotaPadrao' => $v]);
+}, 'admin');
+
+// Registar pagamento: o valor define quantos meses são pagos (valor ÷ quota), sempre a começar no mês mais antigo em dívida.
+route('POST', '/api/admin/pagamentos', function ($c) {
+    $u = $c['user']; $cid = $u['condo_id']; $b = readJson(10000);
+    $m = getRec($cid, 'moradores', str($b['moradorId'] ?? ''));
+    if (!$m) fail(400, 'Escolha a fração.');
+    $quota = quotaPadrao($cid); $valor = (int)round((float)num($b['valor'] ?? 0));
+    if ($valor <= 0) fail(400, 'Indique o valor pago.');
+    if ($valor % $quota !== 0) fail(400, 'O valor tem de ser múltiplo da quota mensal (' . kz($quota) . '). Por exemplo ' . kz($quota * 2) . ' paga 2 meses.');
+    $n = intdiv($valor, $quota);
+    if ($n > 36) fail(400, 'Só é possível registar até 36 meses de cada vez.');
+    $metodos = ['Multicaixa Express', 'Transferência BAI', 'Transferência BFA', 'Transferência BIC', 'Depósito BIC', 'Numerário', 'Outro'];
+    $data = preg_match('/^\d{4}-\d{2}-\d{2}$/', str($b['data'] ?? '')) ? $b['data'] : today();
+    $meses = mesesPorPagar($cid, $m, lista($cid, 'pagamentos'), $n);
+    $criados = registarPagamento($cid, $m, $meses, ['metodo' => in_array($b['metodo'] ?? null, $metodos, true) ? $b['metodo'] : 'Outro', 'data' => $data, 'operacao' => mb_substr(str($b['referencia'] ?? ''), 0, 60)]);
+    logAcao($cid, $u['id'], 'Registou', "Pagamento ({$m['fracao']} · {$m['nome']}): " . implode(', ', $meses) . ' — ' . kz($valor));
+    send(201, ['ok' => true, 'meses' => $meses, 'pagamentos' => $criados]);
+}, 'admin');
+
+// Mensagem de cobrança enviada diretamente ao morador (aparece nos Avisos do portal dele)
+route('POST', '/api/admin/cobrancas/:id', function ($c) {
+    $u = $c['user']; $cid = $u['condo_id'];
+    $m = getRec($cid, 'moradores', $c['p']['id']); if (!$m) fail(404, 'Morador não encontrado.');
+    $msg = trim(str(readJson(10000)['mensagem'] ?? ''));
+    if ($msg === '') fail(400, 'Escreva a mensagem.');
+    putRec($cid, 'avisos', ['id' => newId('a_'), 'titulo' => 'Quotas em atraso', 'mensagem' => mb_substr($msg, 0, 1500), 'destinatarios' => 'Individual', 'moradorId' => $m['id'], 'data' => today(), 'fixado' => 'Sim']);
+    logAcao($cid, $u['id'], 'Enviou', "Cobrança pelo portal: {$m['fracao']} · {$m['nome']}");
+    send(201, ['ok' => true]);
+}, 'admin');
+
+// Importar moradores de uma folha Excel/CSV (as linhas são lidas no browser)
+route('POST', '/api/admin/moradores/importar', function ($c) {
+    $u = $c['user']; $cid = $u['condo_id']; $b = readJson(2000000);
+    $linhas = $b['linhas'] ?? null;
+    if (!is_array($linhas) || !$linhas) fail(400, 'O ficheiro não tem moradores para importar.');
+    if (count($linhas) > 1000) fail(400, 'Importe no máximo 1000 moradores de cada vez.');
+    $existentes = lista($cid, 'moradores'); $quota = quotaPadrao($cid);
+    $lim = planoInfo(condoOf($cid)['plano'])['limite'];
+    $nAtivos = count(array_filter($existentes, 'isAtivo'));
+    $chave = fn($m) => mb_strtolower(trim(str($m['nome'] ?? ''))) . '|' . mb_strtolower(trim(str($m['fracao'] ?? '')));
+    $vistos = array_flip(array_map($chave, $existentes)); $importados = 0; $ignorados = [];
+    foreach ($linhas as $i => $l) {
+        $n = $i + 2; // número da linha na folha (a 1.ª é o cabeçalho)
+        if (!is_array($l)) continue;
+        $nome = mb_substr(trim(str($l['nome'] ?? '')), 0, 120);
+        if ($nome === '') { $ignorados[] = ['linha' => $n, 'motivo' => 'Sem nome']; continue; }
+        $m = ['id' => newId('m_'), 'nome' => $nome, 'fracao' => mb_substr(trim(str($l['fracao'] ?? '')), 0, 30), 'bloco' => mb_substr(trim(str($l['bloco'] ?? '')), 0, 30),
+            'telefone' => mb_substr(trim(str($l['telefone'] ?? '')), 0, 30), 'email' => mb_substr(trim(str($l['email'] ?? '')), 0, 120),
+            'tipo' => str($l['tipo'] ?? '') === 'Inquilino' ? 'Inquilino' : 'Proprietário', 'estado' => 'Ativo', 'quota' => $quota, 'desde' => curMonth(), 'tipologia' => 'T2'];
+        if (isset($vistos[$chave($m)])) { $ignorados[] = ['linha' => $n, 'motivo' => "$nome já existe"]; continue; }
+        if ($lim !== null && $nAtivos >= $lim) { $ignorados[] = ['linha' => $n, 'motivo' => "Limite do plano ($lim frações) atingido"]; continue; }
+        putRec($cid, 'moradores', $m); $vistos[$chave($m)] = true; $nAtivos++; $importados++;
+    }
+    logAcao($cid, $u['id'], 'Importou', "Moradores importados de ficheiro: $importados novos, " . count($ignorados) . ' ignorados');
+    send(200, ['ok' => true, 'importados' => $importados, 'ignorados' => $ignorados]);
+}, 'admin');
+
 // Pagamentos comunicados pelos moradores
 route('POST', '/api/admin/comunicacoes/:id/confirmar', function ($c) {
     $u = $c['user']; $cid = $u['condo_id'];
@@ -115,15 +191,10 @@ route('POST', '/api/admin/comunicacoes/:id/confirmar', function ($c) {
     if (!$cm || ($cm['estado'] ?? '') !== 'Pendente') fail(404, 'Comunicação não encontrada ou já tratada.');
     $m = getRec($cid, 'moradores', $cm['moradorId'] ?? null);
     if (!$m) fail(400, 'O morador desta comunicação já não existe.');
-    $todos = lista($cid, 'pagamentos');
-    $pagos = array_column(array_filter($todos, fn($x) => ($x['moradorId'] ?? null) === $m['id']), 'mes');
-    $novos = array_values(array_filter($cm['meses'], fn($x) => !in_array($x, $pagos, true)));
-    $nPag = count($todos); $ids = [];
-    foreach ($novos as $i => $mes) {
-        $pg = ['id' => newId('p_'), 'moradorId' => $m['id'], 'mes' => $mes, 'valor' => (int)round($cm['valor'] / count($cm['meses'])), 'metodo' => $cm['metodo'], 'data' => $cm['data'],
-            'referencia' => 'REC-' . (1001 + $nPag + $i), 'operacao' => $cm['referencia'] ?? '', 'comprovativoId' => $cm['comprovativoId'] ?? null];
-        putRec($cid, 'pagamentos', $pg); $ids[] = $pg['id'];
-    }
+    // Os meses são atribuídos por ordem, do mais antigo em dívida (o morador paga tantos meses quantos indicou).
+    $novos = mesesPorPagar($cid, $m, lista($cid, 'pagamentos'), count($cm['meses']));
+    $criados = registarPagamento($cid, $m, $novos, ['metodo' => $cm['metodo'], 'data' => $cm['data'], 'operacao' => $cm['referencia'] ?? '', 'comprovativoId' => $cm['comprovativoId'] ?? null]);
+    $ids = array_column($criados, 'id');
     putRec($cid, 'comunicacoes', array_merge($cm, ['estado' => 'Confirmado', 'tratadoEm' => nowIso(), 'pagamentoIds' => $ids]));
     logAcao($cid, $u['id'], 'Confirmou', "Pagamento comunicado por {$m['fracao']} · {$m['nome']}: " . implode(', ', $cm['meses']) . ' — ' . kz($cm['valor']));
     send(200, ['ok' => true, 'criados' => count($ids)]);
@@ -183,7 +254,7 @@ route('DELETE', '/api/admin/utilizadores/:id', function ($c) {
 route('GET', '/api/admin/assinatura', function ($c) {
     $cid = $c['user']['condo_id']; $co = condoOf($cid);
     $faturas = array_map(fn($f) => ['estado' => faturaEstado($f)] + $f, rows('SELECT * FROM faturas WHERE condo_id = ? ORDER BY periodo DESC', [$cid]));
-    send(200, ['plano' => $co['plano'], 'estado' => $co['estado'], 'fracoesAtivas' => count(array_filter(lista($cid, 'moradores'), 'isAtivo')), 'planos' => planosLista(), 'faturas' => $faturas]);
+    send(200, ['plano' => $co['plano'], 'preco' => precoCondo($co), 'estado' => $co['estado'], 'fracoesAtivas' => count(array_filter(lista($cid, 'moradores'), 'isAtivo')), 'planos' => planosLista(), 'faturas' => $faturas]);
 }, 'admin');
 route('POST', '/api/admin/assinatura/plano', function ($c) {
     $u = $c['user']; $plano = str(readJson(10000)['plano'] ?? '');
@@ -310,7 +381,7 @@ function portalDados(array $u): ?array {
     return [
         'condominio' => ['nome' => $cfg['nome'] ?? null, 'morada' => $cfg['morada'] ?? null, 'iban' => $cfg['iban'] ?? null, 'diaVencimento' => $cfg['diaVencimento'] ?? 10],
         'morador' => $perfil, 'pagamentos' => $pags, 'divida' => dividaDe($cid, $m, $pags),
-        'avisos' => ordenarDesc(array_values(array_filter(lista($cid, 'avisos'), fn($a) => in_array($a['destinatarios'] ?? null, $grupos, true))), 'data'),
+        'avisos' => ordenarDesc(array_values(array_filter(lista($cid, 'avisos'), fn($a) => in_array($a['destinatarios'] ?? null, $grupos, true) || ($a['moradorId'] ?? null) === $m['id'])), 'data'),
         'ocorrencias' => ordenarDesc(array_values(array_filter(lista($cid, 'ocorrencias'), fn($o) => ($o['criadoPor'] ?? null) === $u['id'] || (!empty($o['fracao']) && $o['fracao'] === ($m['fracao'] ?? null)))), 'data'),
         'documentos' => ordenarDesc(array_map(function ($d) { unset($d['notas']); return $d; }, array_values(array_filter(lista($cid, 'documentos'), fn($d) => ($d['visivel'] ?? '') === 'Sim'))), 'data'),
         'comunicacoes' => ordenarDesc(array_values(array_filter(lista($cid, 'comunicacoes'), fn($x) => ($x['moradorId'] ?? null) === $m['id'])), 'criado'),
@@ -359,8 +430,10 @@ route('POST', '/api/portal/pagamentos', function ($c) {
     $pend = [];
     foreach (lista($cid, 'comunicacoes') as $x) if (($x['moradorId'] ?? null) === $m['id'] && ($x['estado'] ?? '') === 'Pendente') $pend = array_merge($pend, $x['meses'] ?? []);
     if (array_intersect($meses, $pend)) fail(400, 'Já comunicou o pagamento de um destes meses. Aguarde a confirmação da administração.');
-    $valor = (int)round((float)num($b['valor'] ?? 0));
-    if ($valor <= 0) fail(400, 'Indique o valor pago.');
+    // Ordem obrigatória: só se pode pagar um mês depois de liquidar os anteriores.
+    $esperados = mesesPorPagar($cid, $m, lista($cid, 'pagamentos'), count($meses), $pend);
+    if ($meses !== $esperados) fail(400, 'Os meses têm de ser pagos por ordem. O próximo mês por pagar é ' . mesLongo($esperados[0]) . '.');
+    $valor = count($meses) * quotaPadrao($cid);
     $data = preg_match('/^\d{4}-\d{2}-\d{2}$/', str($b['data'] ?? '')) ? $b['data'] : today();
     $metodos = ['Multicaixa Express', 'Transferência BAI', 'Transferência BFA', 'Transferência BIC', 'Depósito BIC', 'Numerário', 'Outro'];
     $comprovativoId = !empty($b['comprovativo']) ? saveFile($cid, $b['comprovativo']) : null;
@@ -379,7 +452,7 @@ function resumoPlataforma(): array {
         $info = planoInfo($c['plano']);
         $fs = array_filter($faturas, fn($f) => $f['condo_id'] === $c['id']);
         return ['id' => $c['id'], 'nome' => $c['nome'], 'nif' => $c['nif'], 'contacto' => $c['contacto'], 'plano' => $c['plano'], 'estado' => $c['estado'], 'criado' => $c['criado'],
-            'preco' => $info['preco'], 'limite' => $info['limite'], 'fracoes' => count(array_filter($mor, 'isAtivo')),
+            'preco' => precoCondo($c), 'limite' => $info['limite'], 'fracoes' => count(array_filter($mor, 'isAtivo')),
             'moradoresComAcesso' => count(array_filter($us, fn($x) => $x['papel'] === 'morador' && $x['ativo'])),
             'admins' => array_map('publicUser', array_values(array_filter($us, fn($x) => $x['papel'] === 'admin'))),
             'ultimaAtividade' => scalar('SELECT MAX(t) FROM historico WHERE condo_id = ?', [$c['id']]),
@@ -394,11 +467,12 @@ route('POST', '/api/plataforma/condominios', function () {
     if ($nome === '') fail(400, 'Indique o nome do condomínio.');
     if ($adminNome === '') fail(400, 'Indique o nome do administrador.');
     if (!isset(PLANOS[str($b['plano'] ?? '')])) fail(400, 'Escolha um plano.');
+    $preco = validarPreco($b['preco'] ?? 0);
     $id = newId('c_'); $pdo = db();
     $pdo->beginTransaction();
     try {
-        run('INSERT INTO condominios (id, nome, criado, estado, plano, nif, contacto) VALUES (?, ?, ?, ?, ?, ?, ?)', [$id, $nome, nowIso(), 'Ativo', $b['plano'], str($b['nif'] ?? '') ?: null, str($b['contacto'] ?? '') ?: null]);
-        putRec($id, 'config', ['id' => 'geral', 'nome' => $nome, 'morada' => str($b['morada'] ?? ''), 'nif' => str($b['nif'] ?? ''), 'iban' => '', 'diaVencimento' => 10, 'inicio' => curMonth(), 'plano' => $b['plano']]);
+        run('INSERT INTO condominios (id, nome, criado, estado, plano, nif, contacto, preco) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [$id, $nome, nowIso(), 'Ativo', $b['plano'], str($b['nif'] ?? '') ?: null, str($b['contacto'] ?? '') ?: null, $preco]);
+        putRec($id, 'config', ['id' => 'geral', 'nome' => $nome, 'morada' => str($b['morada'] ?? ''), 'nif' => str($b['nif'] ?? ''), 'iban' => '', 'diaVencimento' => 10, 'inicio' => curMonth(), 'plano' => $b['plano'], 'quotaPadrao' => QUOTA_PADRAO]);
         $r = criarUtilizador($id, 'admin', $b['adminEmail'] ?? '', $adminNome);
         emitirFatura($id, curMonth());
         $pdo->commit();
@@ -414,6 +488,11 @@ route('PATCH', '/api/plataforma/condominios/:id', function ($c) {
         run('UPDATE condominios SET estado = ? WHERE id = ?', [$b['estado'], $co['id']]);
         if ($b['estado'] === 'Suspenso') run("DELETE FROM sessoes WHERE user_id IN (SELECT id FROM utilizadores WHERE condo_id = ? AND papel = 'morador')", [$co['id']]);
         logAcao($co['id'], null, 'Alterou', 'Plataforma: condomínio ' . ($b['estado'] === 'Ativo' ? 'reativado' : 'suspenso'));
+    }
+    if (isset($b['preco'])) {
+        $preco = validarPreco($b['preco']);
+        run('UPDATE condominios SET preco = ? WHERE id = ?', [$preco, $co['id']]);
+        logAcao($co['id'], null, 'Alterou', 'Plataforma: preço mensal do prédio ' . kz(precoCondo($co)) . ' → ' . kz($preco) . ' (a partir da próxima fatura)');
     }
     if (!empty($b['plano'])) {
         if (!isset(PLANOS[str($b['plano'])])) fail(400, 'Plano desconhecido.');

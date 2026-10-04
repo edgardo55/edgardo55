@@ -15,6 +15,15 @@ const PLANOS = [
     'Profissional' => ['preco' => 35000, 'limite' => 120],
     'Empresarial' => ['preco' => 75000, 'limite' => null],
 ];
+// Cada prédio paga à plataforma um preço mensal próprio, entre PRECO_MIN e PRECO_MAX (sem preço próprio, vale o do plano).
+const PRECO_MIN = 35000;
+const PRECO_MAX = 75000;
+function precoCondo(array $c): int { return (int)($c['preco'] ?: planoInfo($c['plano'])['preco']); }
+function validarPreco(mixed $v): int {
+    $p = (int)round((float)num($v));
+    if ($p < PRECO_MIN || $p > PRECO_MAX) throw bad('O preço mensal do prédio deve estar entre ' . kz(PRECO_MIN) . ' e ' . kz(PRECO_MAX) . '.');
+    return $p;
+}
 function planoInfo(?string $p): array { return PLANOS[$p] ?? PLANOS['Profissional']; }
 function planosLista(): array {
     $o = [];
@@ -85,6 +94,7 @@ SQL);
     $addCol('condominios', 'plano', "TEXT NOT NULL DEFAULT 'Profissional'");
     $addCol('condominios', 'nif', 'TEXT');
     $addCol('condominios', 'contacto', 'TEXT');
+    $addCol('condominios', 'preco', 'INTEGER'); // preço mensal da assinatura deste prédio (definido pela plataforma)
 }
 
 /* ---------------- Utilitários ---------------- */
@@ -222,18 +232,59 @@ function monthsBetween(string $a, string $b): array {
     }
     return $out;
 }
+// Quota mensal padrão: igual para todos os moradores; só os administradores a alteram (Definições).
+const QUOTA_PADRAO = 10000;
+function quotaPadrao(string $condo): int {
+    $cfg = getRec($condo, 'config', 'geral') ?: [];
+    $q = (int)round((float)num($cfg['quotaPadrao'] ?? 0));
+    return $q > 0 ? $q : QUOTA_PADRAO;
+}
+// Define a quota padrão e iguala a quota de todos os moradores (o valor de cada mês é sempre este).
+function definirQuota(string $condo, int $valor): void {
+    $cfg = getRec($condo, 'config', 'geral') ?: ['id' => 'geral'];
+    putRec($condo, 'config', array_merge($cfg, ['quotaPadrao' => $valor]));
+    foreach (lista($condo, 'moradores') as $m) if ((int)num($m['quota'] ?? 0) !== $valor) putRec($condo, 'moradores', array_merge($m, ['quota' => $valor]));
+}
+function somarMeses(string $mes, int $n): string {
+    [$y, $m] = array_map('intval', explode('-', $mes));
+    $t = $y * 12 + ($m - 1) + $n;
+    return sprintf('%d-%02d', intdiv($t, 12), $t % 12 + 1);
+}
+function inicioCobranca(string $condo, array $m): string {
+    $cfg = getRec($condo, 'config', 'geral') ?: [];
+    $inicio = str($cfg['inicio'] ?? ''); $desde = str($m['desde'] ?? '');
+    return ($desde !== '' && $desde > $inicio) ? $desde : ($inicio ?: curMonth());
+}
+// Os próximos $n meses por pagar, por ordem (do mais antigo): não se pode pagar um mês sem liquidar os anteriores.
+function mesesPorPagar(string $condo, array $m, array $pagamentos, int $n, array $extraPagos = []): array {
+    $pagos = array_flip($extraPagos);
+    foreach ($pagamentos as $p) if (($p['moradorId'] ?? null) === $m['id']) $pagos[$p['mes'] ?? ''] = true;
+    $out = []; $mes = inicioCobranca($condo, $m);
+    for ($i = 0; count($out) < $n && $i < 600; $i++, $mes = somarMeses($mes, 1)) if (!isset($pagos[$mes])) $out[] = $mes;
+    return $out;
+}
 function dividaDe(string $condo, array $m, array $pagamentos): array {
     $cfg = getRec($condo, 'config', 'geral') ?: [];
     if (!isAtivo($m)) return ['meses' => [], 'total' => 0];
-    $cur = curMonth(); $inicio = str($cfg['inicio'] ?? '');
+    $cur = curMonth();
     $venc = num($cfg['diaVencimento'] ?? 0) ?: 10;
     $vencido = (int)date('j') > $venc;
-    $desde = str($m['desde'] ?? '');
-    $start = ($desde !== '' && $desde > $inicio) ? $desde : ($inicio ?: $cur);
+    $start = inicioCobranca($condo, $m);
     $pagos = [];
     foreach ($pagamentos as $p) if (($p['moradorId'] ?? null) === $m['id']) $pagos[$p['mes'] ?? ''] = true;
-    $meses = array_values(array_filter(monthsBetween($start, $cur), fn($x) => !isset($pagos[$x]) && ($x < $cur || $vencido)));
-    return ['meses' => $meses, 'total' => count($meses) * num($m['quota'] ?? 0)];
+    $meses = [];
+    for ($x = $start; $x <= $cur; $x = somarMeses($x, 1)) if (!isset($pagos[$x]) && ($x < $cur || $vencido)) $meses[] = $x;
+    return ['meses' => $meses, 'total' => count($meses) * quotaPadrao($condo)];
+}
+// Cria um recibo por mês, começando no mais antigo em dívida. Devolve os pagamentos criados.
+function registarPagamento(string $condo, array $m, array $meses, array $dados): array {
+    $quota = quotaPadrao($condo); $nPag = count(lista($condo, 'pagamentos')); $out = [];
+    foreach ($meses as $i => $mes) {
+        $pg = ['id' => newId('p_'), 'moradorId' => $m['id'], 'mes' => $mes, 'valor' => $quota, 'metodo' => $dados['metodo'], 'data' => $dados['data'],
+            'referencia' => 'REC-' . (1001 + $nPag + $i), 'operacao' => $dados['operacao'] ?? '', 'comprovativoId' => $dados['comprovativoId'] ?? null];
+        putRec($condo, 'pagamentos', $pg); $out[] = $pg;
+    }
+    return $out;
 }
 
 function saveFile(string $condo, mixed $f): string {
@@ -265,13 +316,13 @@ function reporSenha(array $u): string {
 }
 function faturaEstado(array $f): string { return $f['estado'] === 'Pendente' && $f['vence'] < today() ? 'Em atraso' : $f['estado']; }
 function emitirFatura(string $condo, string $periodo): void {
-    $c = condoOf($condo); $info = planoInfo($c['plano']);
+    $c = condoOf($condo);
     [$y, $m] = explode('-', $periodo);
     // Vence no dia 15 do mês, mas nunca menos de 10 dias depois de emitida (clientes novos a meio do mês).
     $minimo = gmdate('Y-m-d', time() + 10 * 86400);
     $vence = ("$y-$m-15" < $minimo && $periodo >= curMonth()) ? $minimo : "$y-$m-15";
     run('INSERT OR IGNORE INTO faturas (id, condo_id, periodo, plano, valor, estado, emitida, vence, referencia) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [newId('ft_'), $condo, $periodo, $c['plano'], $info['preco'], 'Pendente', nowIso(), $vence, "KND-$y$m-" . strtoupper(bin2hex(random_bytes(3)))]);
+        [newId('ft_'), $condo, $periodo, $c['plano'], precoCondo($c), 'Pendente', nowIso(), $vence, "KND-$y$m-" . strtoupper(bin2hex(random_bytes(3)))]);
 }
 function descrever(string $condo, string $col, array $r): string {
     $nomes = ['config' => 'Definições', 'moradores' => 'Morador', 'pagamentos' => 'Pagamento', 'despesas' => 'Despesa', 'funcionarios' => 'Funcionário', 'ocorrencias' => 'Ocorrência', 'manutencao' => 'Manutenção', 'documentos' => 'Documento', 'cameras' => 'Câmara', 'avisos' => 'Aviso', 'comunicacoes' => 'Comunicação de pagamento'];
