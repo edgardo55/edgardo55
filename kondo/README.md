@@ -46,3 +46,11 @@ deploy/            Caddyfile (php-fpm) e backup.sh
 
 - Palavras-passe com `password_hash` (Argon2id/bcrypt) em vez de `scrypt`: **as contas de uma base de dados Node existente não iniciam sessão** — reponha as palavras-passe pela Plataforma. Instalações novas não são afetadas.
 - O bloqueio de tentativas de login passou a ser guardado na base de dados (o PHP não mantém memória entre pedidos).
+
+## Quotas dos moradores (regras)
+
+- A **quota mensal é igual para todos** (10 000 Kz por omissão). Só os administradores a alteram, em *Definições → Quota mensal dos moradores*; a alteração aplica-se a todos os moradores. É independente do preço dos pacotes (planos) do Kondo.
+- **O valor define os meses**: 20 000 Kz = 2 meses. O valor tem de ser múltiplo da quota.
+- **Pagamento por ordem**: os meses são atribuídos a começar no mais antigo em dívida; não se paga um mês sem liquidar os anteriores (vale também para os pagamentos comunicados no portal).
+- **Cobrança**: em *Dívidas* (ou na ficha do morador) o administrador envia a mensagem por WhatsApp, SMS ou para os Avisos do portal do morador.
+- **Importar moradores**: em *Gestão de moradores → Importar Excel* (.xlsx ou .csv). Colunas: Nome (obrigatória), Fração, Bloco, Telefone, Email, Tipo.

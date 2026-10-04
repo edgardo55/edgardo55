@@ -62,15 +62,15 @@ const SCHEMA = {
       ['tipo','Tipo','select',opt('Proprietário','Inquilino')],['estado','Estado','select',opt('Ativo','Inativo','Mudou-se')],
       ['_s2','Contactos','section'],
       ['telefone','Telefone','tel',{ph:'+244 9__ ___ ___'}],['email','Email','email',{priv:1}],['emergencia','Contacto de emergência','text',{priv:1,full:1,ph:'Nome e telefone'}],
-      ['_s3','Fração e quota','section'],
-      ['fracao','Fração','text',{req:1,ph:'A-1Esq'}],['bloco','Bloco','text'],['tipologia','Tipologia','select',opt('T1','T2','T3','T4','T5','Loja')],['quota','Quota mensal (Kz)','money',{req:1}],['desde','Paga quotas desde','month'],
+      ['_s3','Fração','section'],
+      ['fracao','Fração','text',{ph:'A-1Esq'}],['bloco','Bloco','text'],['tipologia','Tipologia','select',opt('T1','T2','T3','T4','T5','Loja')],['desde','Paga quotas desde','month'],
       ['_s4','Agregado e viaturas','section'],
       ['agregado','Pessoas no agregado','number'],['viaturas','Matrículas das viaturas','text',{ph:'LD-12-34-AB'}],
       ['foto','Fotografia','file',{full:1,accept:'image/*'}],
       ['observacoes','Observações internas (só administradores)','textarea',{priv:1,full:1}]],
-    cols:['fracao','nome','tipo','telefone','estado','quota'], sort:'fracao', filter:'estado' },
+    cols:['fracao','nome','tipo','telefone','estado'], sort:'fracao', filter:'estado' },
   pagamentos: { label:'Pagamento', title:'Pagamentos', sub:'Recibos de quotas recebidas.',
-    fields:[['moradorId','Fração','morador',{req:1,full:1}],['mes','Mês de referência','month',{req:1}],['valor','Valor (Kz)','money',{req:1}],['metodo','Método','select',opt('Multicaixa Express','Transferência BAI','Transferência BFA','Transferência BIC','Depósito BIC','Numerário','Outro')],['data','Data do pagamento','date',{req:1}],['referencia','Referência / recibo','text',{full:1}]],
+    fields:[['moradorId','Fração','morador',{req:1,full:1}],['mes','Mês de referência','month'],['valor','Valor pago (Kz)','money',{req:1}],['metodo','Método','select',opt('Multicaixa Express','Transferência BAI','Transferência BFA','Transferência BIC','Depósito BIC','Numerário','Outro')],['data','Data do pagamento','date',{req:1}],['referencia','Referência da operação (opcional)','text',{full:1}]],
     cols:['data','moradorId','mes','metodo','referencia','valor'], sort:'-data' },
   despesas: { label:'Despesa', title:'Despesas', sub:'Tudo o que sai da conta do condomínio.',
     fields:[['data','Data','date',{req:1}],['categoria','Categoria','select',opt('Segurança','Energia','Água','Limpeza','Salários','Gerador','Manutenção','Jardinagem','Administrativo','Outro')],['fornecedor','Fornecedor','text'],['valor','Valor (Kz)','money',{req:1}],['descricao','Descrição','text',{full:1}]],
@@ -120,8 +120,17 @@ function dividas() {
     const meses = monthsBetween(start, curMes).filter(mm => !(pm[m.id]||{})[mm]);
     const atraso = meses.filter(mm => mm < curMes || (mm === curMes && vencido));
     const last = D.pagamentos.filter(p => p.moradorId === m.id).sort((a,b) => (b.data||'').localeCompare(a.data||''))[0];
-    return {m, meses: atraso, total: atraso.length * (+m.quota||0), last};
+    return {m, meses: atraso, total: atraso.length * quota(), last};
   }).filter(x => x.meses.length).sort((a,b) => b.total - a.total);
+}
+const quota = () => condo.quotaPadrao || 10000;
+// Próximos n meses por pagar da fração, por ordem (não se salta nenhum mês em dívida).
+function mesesPorPagar(mid, n) {
+  const m = moradorById(mid); if (!m) return [];
+  const pm = paidMap()[mid] || {}, c = cfg(), out = [];
+  let [y, mo] = ((m.desde && m.desde > (c.inicio||'')) ? m.desde : (c.inicio || curMes)).split('-').map(Number);
+  for (let i = 0; out.length < n && i < 600; i++) { const k = y + '-' + String(mo).padStart(2,'0'); if (!pm[k]) out.push(k); if (++mo > 12) { mo = 1; y++; } }
+  return out;
 }
 const sum = (arr, k) => arr.reduce((s, x) => s + (+x[k] || 0), 0);
 
@@ -247,7 +256,7 @@ function renderQuotas() {
   const dia = +c.diaVencimento || 10, vencido = now.getDate() > dia;
   const mor = [...ativos()].sort((a,b) => (a.fracao||'').localeCompare(b.fracao||''));
   const tot = meses.map(mm => sum(D.pagamentos.filter(p => p.mes === mm), 'valor'));
-  $view.innerHTML = header('Quotas', `Mapa de pagamentos por fração. Clique num mês por pagar para registar o recibo.`,
+  $view.innerHTML = header('Quotas', `Mapa de pagamentos por fração. Clique num mês por pagar para registar o pagamento: os meses são pagos por ordem, do mais antigo para o mais recente.`,
     isAdmin ? `<button class="btn primary" data-act="novo" data-col="pagamentos">Registar pagamento</button>` : "") +
   `<div class="toolbar"><span class="legend"><span><i style="background:var(--ok-soft);border:1px solid var(--ok)"></i>Pago</span><span><i style="background:var(--warn-soft);border:1px dashed var(--warn)"></i>Por vencer (até dia ${dia})</span><span><i style="background:var(--bad-soft);border:1px solid var(--bad)"></i>Em atraso</span></span></div>
   <div class="tablewrap"><table class="qgrid"><thead><tr><th>Fração</th><th class="num">Quota</th>${meses.map(mm => `<th>${fmtMes(mm)}</th>`).join('')}</tr></thead><tbody>
@@ -333,7 +342,7 @@ function renderAdmin() {
   else if (adminState.f) rows = rows.filter(m => (m.estado || 'Ativo') === adminState.f);
   rows = sortRows(rows, 'fracao');
   const nAt = all.filter(isAtivo).length, nProp = all.filter(m => isAtivo(m) && m.tipo === 'Proprietário').length, nInc = all.filter(incompleto).length;
-  $view.innerHTML = header('Gestão de moradores', 'Cadastre, altere ou elimine os perfis dos moradores. Os dados pessoais (BI, NIF, email, contacto de emergência e observações) só são visíveis para administradores.', addBtn('moradores')) +
+  $view.innerHTML = header('Gestão de moradores', 'Cadastre, altere ou elimine os perfis dos moradores. Os dados pessoais (BI, NIF, email, contacto de emergência e observações) só são visíveis para administradores.', '<button class="btn" data-importar>Importar Excel</button>' + addBtn('moradores')) +
   `<div class="kpis">
     <div class="kpi"><span class="lbl">Moradores ativos</span><span class="val">${nAt}</span><span class="sub">${all.length - nAt} inativos ou mudaram-se</span></div>
     <div class="kpi"><span class="lbl">Proprietários</span><span class="val">${nProp}</span><span class="sub">${nAt - nProp} inquilinos</span></div>
@@ -371,7 +380,7 @@ function renderPerfil() {
   <section class="panel" style="margin-bottom:16px"><div class="profile-head">${avatar(m, 72)}
     <div style="flex:1;min-width:200px"><h1 style="font:600 24px/1.2 var(--display);margin:0;letter-spacing:-.02em">${esc(m.nome)}</h1>
       <p class="dim" style="margin:4px 0 8px">Fração <b style="color:var(--ink)">${esc(m.fracao)}</b> · Bloco ${esc(m.bloco||'—')} · ${esc(m.tipologia||'')} · quota ${kz(m.quota)}</p>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">${pill('tipo', m.tipo)}${pill('estado', m.estado||'Ativo')}${dv ? `<span class="pill bad">Dívida ${kz(dv.total)}</span>` : '<span class="pill ok">Quotas em dia</span>'}</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${pill('tipo', m.tipo)}${pill('estado', m.estado||'Ativo')}${dv ? `<span class="pill bad">Dívida ${kz(dv.total)}</span>` : '<span class="pill ok">Quotas em dia</span>'}</div>${dv && isAdmin ? `<button class="btn small" style="margin-top:10px" data-cobrar="${m.id}">Enviar cobrança</button>` : ''}</div>
     ${isAdmin ? `<div class="actions"><button class="btn" data-edit="moradores:${m.id}">Editar perfil</button><button class="btn danger" data-del="${m.id}">Eliminar</button></div>` : ''}</div></section>
   <div class="grid2">
     <section class="panel"><h2>Dados do morador</h2><dl class="dl">
@@ -623,7 +632,16 @@ function renderDefinicoes() {
       <li><span>Receita mensal esperada</span><span class="num">${kz(sum(ativos(),'quota'))}</span></li>
       <li><span>Salários mensais</span><span class="num">${kz(sum(D.funcionarios.filter(f=>f.estado!=='Inativo'),'salario'))}</span></li>
       <li><span>Documentos arquivados</span><span class="num">${D.documentos.length}</span></li></ul></section></div>
+    <section class="panel" style="margin-top:16px"><h2>Quota mensal dos moradores</h2>
+      <p class="dim" style="margin:0 0 10px;font-size:14px">Valor que cada morador paga por mês. É igual para todos e só os administradores o podem alterar. Um pagamento de ${kz(quota() * 2)} conta como 2 meses. Não tem relação com o preço dos pacotes Kondo, mais abaixo.</p>
+      <form id="quotaForm" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div class="field"><label for="quotaV">Quota mensal (Kz)</label><input id="quotaV" type="number" min="100" step="100" value="${quota()}" required></div><button class="btn primary" type="submit">Guardar quota</button></form></section>
     <section class="panel" style="margin-top:16px" id="assin"><h2>Assinatura Kondo</h2><p class="empty">A carregar…</p></section>`;
+  document.getElementById('quotaForm').addEventListener('submit', async e => {
+    e.preventDefault(); const v = +document.getElementById('quotaV').value;
+    if (v === quota()) return toast('A quota já é ' + kz(v));
+    if (!confirm(`Alterar a quota mensal de todos os moradores para ${kz(v)}?`)) return;
+    try { await api('POST', '/api/admin/quota', {valor: v}); await loadAll(); render(); toast('Quota mensal alterada para ' + kz(v)); } catch (err) { toast(err.message); }
+  });
   document.getElementById('cfgForm').addEventListener('submit', async e => {
     e.preventDefault(); const obj = {...c, id:'geral'}; readForm(e.target, F, obj, 'cfg'); obj.diaVencimento = +obj.diaVencimento || 10;
     try { await save('config', obj); toast('Definições guardadas'); } catch (err) { toast(err.message); }
@@ -667,18 +685,30 @@ function readForm(form, fields, obj, pfx='f') {
 function openForm(col, rec, preset) {
   const S = SCHEMA[col]; const isNew = !rec; const ro = !canWrite(col);
   const r = rec ? (col === 'moradores' ? withPriv(rec) : {...rec}) : {id: uid(), ...defaults(col), ...(preset||{})};
-  const fields = (col === 'moradores' && !isAdmin) ? S.fields.filter(f => !(f[3] && f[3].priv)) : S.fields;
+  let fields = (col === 'moradores' && !isAdmin) ? S.fields.filter(f => !(f[3] && f[3].priv)) : S.fields;
+  if (col === 'pagamentos' && isNew) fields = fields.filter(f => f[0] !== 'mes');
   const root = document.getElementById('modalRoot');
   const title = ro ? S.label : isNew ? (col === 'moradores' ? 'Cadastrar morador' : 'Novo registo · ' + S.label) : 'Editar · ' + S.label;
   root.innerHTML = `<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><header><h2 id="mt">${esc(title)}</h2><button class="x" type="button" data-close aria-label="Fechar">✕</button></header>
-    <form id="mf">${fields.map(f => fieldHtml(f, f[2]==='file' ? r[f[0]+'Nome'] : r[f[0]])).join('')}
+    <form id="mf">${fields.map(f => fieldHtml(f, f[2]==='file' ? r[f[0]+'Nome'] : (col==='pagamentos' && f[0]==='referencia' ? (r.operacao||'') : r[f[0]]))).join('')}
+    ${col==='pagamentos' && isNew ? '<p class="dim field full" id="pgHint" style="margin:0"></p>' : ''}
     <p class="dim field full" id="mErr" style="color:var(--bad);margin:0" hidden></p>
     <footer>${ro ? '<span class="dim" style="font-size:13px">Só administradores podem alterar este registo.</span><div><button class="btn" type="button" data-close>Fechar</button></div>'
       : `${isNew ? '<span></span>' : '<button class="btn danger" type="button" id="delBtn">Eliminar</button>'}<div><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">${isNew?(col==='moradores'?'Cadastrar':'Adicionar'):'Guardar'}</button></div>`}</footer></form></div></div>`;
   const form = document.getElementById('mf');
   if (ro) { form.querySelectorAll('input,select,textarea').forEach(el => el.disabled = true); return; }
   const first = form.querySelector('input,select,textarea'); if (first) first.focus();
-  if (col === 'pagamentos') { const sel = form.querySelector('#f-moradorId'), val = form.querySelector('#f-valor'); sel.addEventListener('change', () => { const m = moradorById(sel.value); if (m && isNew) val.value = m.quota; }); }
+  if (col === 'pagamentos' && isNew) {
+    const sel = form.querySelector('#f-moradorId'), val = form.querySelector('#f-valor'), hint = form.querySelector('#pgHint');
+    const atualizar = () => {
+      const v = +val.value || 0, q = quota(), n = Math.floor(v / q);
+      if (!sel.value || !v) { hint.textContent = `Cada mês custa ${kz(q)}. Ex.: ${kz(q * 2)} paga 2 meses.`; return; }
+      if (v % q) { hint.innerHTML = `<span style="color:var(--bad)">O valor tem de ser múltiplo de ${kz(q)}.</span>`; return; }
+      hint.innerHTML = `${kz(v)} = <b>${n} ${n === 1 ? 'mês' : 'meses'}</b>: ${mesesPorPagar(sel.value, n).map(fmtMes).join(', ')}`;
+    };
+    sel.addEventListener('change', () => { if (!+val.value || +val.value === quota()) val.value = quota(); atualizar(); });
+    val.addEventListener('input', atualizar); atualizar();
+  } else if (col === 'pagamentos') form.querySelectorAll('#f-moradorId,#f-mes,#f-valor').forEach(el => el.disabled = true);
   form.addEventListener('submit', async e => {
     e.preventDefault(); readForm(form, fields, r);
     const btn = form.querySelector('[type=submit]'), label0 = btn.textContent;
@@ -688,6 +718,11 @@ function openForm(col, rec, preset) {
     }
     btn.disabled = true; btn.textContent = 'A guardar…';
     try {
+      if (col === 'pagamentos' && isNew) {
+        const j = await api('POST', '/api/admin/pagamentos', {moradorId:r.moradorId, valor:r.valor, metodo:r.metodo, data:r.data, referencia:r.referencia});
+        await loadAll(); closeModal(); render(); toast(`Pagamento registado · ${j.meses.length} ${j.meses.length === 1 ? 'mês' : 'meses'}: ${j.meses.map(fmtMes).join(', ')}`);
+        return;
+      }
       for (const fileEl of form.querySelectorAll('input[type=file]')) {
         if (fileEl.files[0] && assets) { const up = await assets.upload(fileEl.files[0]); r[fileEl.name + 'Id'] = up.id; r[fileEl.name + 'Nome'] = fileEl.files[0].name; }
       }
@@ -705,9 +740,9 @@ function openForm(col, rec, preset) {
 function defaults(col) {
   const c = cfg();
   return ({
-    pagamentos:{mes:curMes, data:today, metodo:'Multicaixa Express', referencia:'REC-' + String(1000 + D.pagamentos.length + 1)},
+    pagamentos:{mes:curMes, data:today, metodo:'Multicaixa Express', referencia:''},
     despesas:{data:today, categoria:'Outro'}, ocorrencias:{data:today, estado:'Aberta', prioridade:'Média', categoria:'Infraestrutura'},
-    manutencao:{tipo:'Preventiva', estado:'Agendada'}, moradores:{tipologia:'T2', tipo:'Proprietário', estado:'Ativo', quota:35000, desde:curMes},
+    manutencao:{tipo:'Preventiva', estado:'Agendada'}, moradores:{tipologia:'T2', tipo:'Proprietário', estado:'Ativo', desde:curMes},
     funcionarios:{estado:'Ativo', turno:'Diurno'}, documentos:{data:today}, cameras:{estado:'Online', verificacao:today}, avisos:{data:today, destinatarios:'Todos', fixado:'Não'},
   })[col] || {};
 }
@@ -716,23 +751,132 @@ function errMsg(e) { return (e && e.message) || 'Não foi possível guardar. Ver
 document.getElementById('modalRoot').addEventListener('click', e => { if (e.target.id === 'ov' || e.target.closest('[data-close]')) closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); if (e.key === 'Enter' && e.target.matches('tr[data-edit],tr[data-perfil]')) e.target.click(); });
 
+function telefoneIntl(t) {
+  let d = String(t || '').replace(/\D/g, '');
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.length === 9) d = '244' + d;
+  return d.length >= 11 ? d : '';
+}
 function cobranca(mid) {
-  const x = dividas().find(d => d.m.id === mid); if (!x) return; const c = cfg();
-  const txt = `Caro(a) ${x.m.nome},\n\nA administração do ${c.nome} informa que a fração ${x.m.fracao} tem ${x.meses.length} quota(s) em atraso (${x.meses.map(fmtMes).join(', ')}), no valor total de ${kz(x.total)}.\n\nPode regularizar por Multicaixa Express ou transferência para o IBAN ${c.iban || '—'}, indicando a fração no descritivo.\n\nObrigado,\nA Administração`;
+  const x = dividas().find(d => d.m.id === mid); if (!x) return; const c = cfg(); const tel = telefoneIntl(x.m.telefone);
+  const txt = `Caro(a) ${x.m.nome},\n\nA administração do ${c.nome} informa que a fração ${x.m.fracao} tem ${x.meses.length} quota(s) em atraso (${x.meses.map(fmtMes).join(', ')}), no valor total de ${kz(x.total)} (${kz(quota())} por mês).\n\nOs meses são pagos por ordem, a começar em ${fmtMes(x.meses[0])}. Pode regularizar por Multicaixa Express ou transferência para o IBAN ${c.iban || '—'}, indicando a fração no descritivo.\n\nObrigado,\nA Administração`;
   document.getElementById('modalRoot').innerHTML = `<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><header><h2 id="mt">Mensagem de cobrança · ${esc(x.m.fracao)}</h2><button class="x" type="button" data-close aria-label="Fechar">✕</button></header>
-    <form onsubmit="return false"><div class="field full"><label for="cbTxt">Texto para enviar por SMS ou WhatsApp para ${esc(x.m.telefone)}</label><textarea id="cbTxt" class="copybox" rows="9">${esc(txt)}</textarea></div>
-    <footer><span></span><div><button class="btn" type="button" data-close>Fechar</button><button class="btn primary" type="button" id="cpBtn">Copiar texto</button></div></footer></form></div></div>`;
+    <form onsubmit="return false"><div class="field full"><label for="cbTxt">Mensagem para ${esc(x.m.nome)} ${tel ? '(+' + tel + ')' : '— sem telefone válido registado'}</label><textarea id="cbTxt" class="copybox" rows="10">${esc(txt)}</textarea></div>
+    <div class="field full" style="flex-direction:row;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" id="cbWa" ${tel ? '' : 'disabled'}>Enviar por WhatsApp</button><button class="btn" type="button" id="cbSms" ${tel ? '' : 'disabled'}>Enviar por SMS</button><button class="btn" type="button" id="cbPortal">Enviar para o portal do morador</button></div>
+    <p class="dim field full" id="mErr" style="color:var(--bad);margin:0" hidden></p>
+    <footer><span></span><div><button class="btn" type="button" data-close>Fechar</button><button class="btn" type="button" id="cpBtn">Copiar texto</button></div></footer></form></div></div>`;
+  const ta = () => document.getElementById('cbTxt').value;
+  document.getElementById('cbWa').addEventListener('click', () => window.open(`https://wa.me/${tel}?text=${encodeURIComponent(ta())}`, '_blank', 'noopener'));
+  document.getElementById('cbSms').addEventListener('click', () => { location.href = `sms:+${tel}?body=${encodeURIComponent(ta())}`; });
+  document.getElementById('cbPortal').addEventListener('click', async e => {
+    e.target.disabled = true;
+    try { await api('POST', `/api/admin/cobrancas/${encodeURIComponent(mid)}`, {mensagem: ta()}); closeModal(); toast('Cobrança enviada para o portal de ' + x.m.nome); }
+    catch (err) { const e2 = document.getElementById('mErr'); e2.hidden = false; e2.textContent = errMsg(err); e.target.disabled = false; }
+  });
   document.getElementById('cpBtn').addEventListener('click', () => {
-    const ta = document.getElementById('cbTxt');
-    const fallback = () => { ta.focus(); ta.select(); toast('Texto selecionado. Use Ctrl+C para copiar.'); };
-    try { navigator.clipboard.writeText(ta.value).then(() => toast('Texto copiado'), fallback); } catch (e) { fallback(); }
+    const el = document.getElementById('cbTxt');
+    const fallback = () => { el.focus(); el.select(); toast('Texto selecionado. Use Ctrl+C para copiar.'); };
+    try { navigator.clipboard.writeText(el.value).then(() => toast('Texto copiado'), fallback); } catch (e) { fallback(); }
+  });
+}
+
+/* ---------- Importar moradores de Excel / CSV ---------- */
+async function lerXlsx(buf) {
+  if (typeof DecompressionStream === 'undefined') throw new Error('Este browser não consegue ler ficheiros Excel. Guarde a folha como CSV ou use um browser mais recente.');
+  const u8 = new Uint8Array(buf), dv = new DataView(buf), dec = new TextDecoder();
+  let e = u8.length - 22; while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error('Ficheiro Excel inválido.');
+  const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true); const files = {};
+  for (let i = 0; i < n; i++) {
+    const nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+    files[dec.decode(u8.subarray(p + 46, p + 46 + nl))] = {method: dv.getUint16(p + 10, true), csize: dv.getUint32(p + 20, true), off: dv.getUint32(p + 42, true)};
+    p += 46 + nl + el + cl;
+  }
+  const read = async name => {
+    const f = files[name]; if (!f) return null;
+    const st = f.off + 30 + dv.getUint16(f.off + 26, true) + dv.getUint16(f.off + 28, true), data = u8.subarray(st, st + f.csize);
+    if (f.method === 0) return dec.decode(data);
+    return await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+  };
+  const xml = t => new DOMParser().parseFromString(t, 'application/xml');
+  const sheetName = Object.keys(files).filter(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort((a, b) => a.localeCompare(b, 'en', {numeric: true}))[0];
+  if (!sheetName) throw new Error('Não foi encontrada nenhuma folha no ficheiro.');
+  const ss = await read('xl/sharedStrings.xml');
+  const strings = ss ? [...xml(ss).getElementsByTagName('si')].map(si => [...si.getElementsByTagName('t')].map(t => t.textContent).join('')) : [];
+  const rows = [];
+  for (const row of xml(await read(sheetName)).getElementsByTagName('row')) {
+    const arr = [];
+    for (const c of row.getElementsByTagName('c')) {
+      const col = [...(c.getAttribute('r') || '').replace(/\d+/g, '')].reduce((a, ch) => a * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+      const t = c.getAttribute('t'), v = c.getElementsByTagName('v')[0];
+      let val = '';
+      if (t === 'inlineStr') val = [...c.getElementsByTagName('t')].map(x => x.textContent).join('');
+      else if (v) val = t === 's' ? (strings[+v.textContent] || '') : v.textContent;
+      if (col >= 0) arr[col] = String(val).trim();
+    }
+    rows.push(Array.from(arr, x => x || ''));
+  }
+  return rows;
+}
+function lerCsv(texto) {
+  const sep = (texto.split('\n')[0].match(/;/g) || []).length > (texto.split('\n')[0].match(/,/g) || []).length ? ';' : ',';
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < texto.length; i++) {
+    const ch = texto[i];
+    if (q) { if (ch === '"') { if (texto[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === sep) { row.push(cur.trim()); cur = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && texto[i + 1] === '\n') i++; row.push(cur.trim()); rows.push(row); row = []; cur = ''; }
+    else cur += ch;
+  }
+  if (cur || row.length) { row.push(cur.trim()); rows.push(row); }
+  return rows;
+}
+// Reconhece o cabeçalho (nome, fração, bloco, telefone, email, tipo). Sem cabeçalho, a 1.ª coluna é o nome.
+function linhasDeMoradores(rows) {
+  rows = rows.filter(r => r.some(x => x));
+  const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, '');
+  const mapa = {nome:['nome','nomecompleto','morador','moradores','proprietario','condomino','name'], fracao:['fracao','fraccao','apartamento','andar','casa','porta','unidade'], bloco:['bloco','edificio','predio'], telefone:['telefone','tel','telemovel','telemovel1','contacto','celular','whatsapp','telef'], email:['email','correio','mail'], tipo:['tipo']};
+  const cab = rows[0].map(norm), idx = {};
+  for (const [k, nomes] of Object.entries(mapa)) { const i = cab.findIndex(c => nomes.includes(c)); if (i >= 0) idx[k] = i; }
+  const temCab = idx.nome !== undefined;
+  if (!temCab) idx.nome = 0;
+  return (temCab ? rows.slice(1) : rows).map(r => Object.fromEntries(Object.entries(idx).map(([k, i]) => [k, r[i] || ''])));
+}
+function importarMoradores() {
+  document.getElementById('modalRoot').innerHTML = `<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><header><h2 id="mt">Importar moradores de Excel</h2><button class="x" type="button" data-close aria-label="Fechar">✕</button></header>
+    <form onsubmit="return false"><p class="field full" style="margin:0;font-size:14px">Escolha um ficheiro <b>.xlsx</b> ou <b>.csv</b>. A 1.ª linha pode ter os títulos <b>Nome</b>, Fração, Bloco, Telefone, Email e Tipo — só o nome é obrigatório. Sem títulos, a 1.ª coluna é lida como nome. Cada morador fica com a quota mensal de ${kz(quota())}.</p>
+    <div class="field full"><label for="impF">Ficheiro</label><input id="impF" type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div>
+    <div class="field full" id="impPrev"></div><p class="dim field full" id="mErr" style="color:var(--bad);margin:0" hidden></p>
+    <footer><span></span><div><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="button" id="impGo" disabled>Importar</button></div></footer></form></div></div>`;
+  let linhas = [];
+  const err = m => { const e2 = document.getElementById('mErr'); e2.hidden = !m; e2.textContent = m || ''; };
+  document.getElementById('impF').addEventListener('change', async e => {
+    const f = e.target.files[0]; err(''); linhas = []; document.getElementById('impGo').disabled = true; document.getElementById('impPrev').innerHTML = '';
+    if (!f) return;
+    try {
+      const rows = /\.xlsx$/i.test(f.name) ? await lerXlsx(await f.arrayBuffer()) : lerCsv((await f.text()).replace(/^﻿/, ''));
+      linhas = linhasDeMoradores(rows).filter(l => l.nome);
+      if (!linhas.length) throw new Error('Não foram encontrados nomes no ficheiro.');
+      document.getElementById('impPrev').innerHTML = `<b>${linhas.length}</b> morador${linhas.length === 1 ? '' : 'es'} encontrado${linhas.length === 1 ? '' : 's'}. Pré-visualização:<div class="tablewrap" style="margin-top:6px"><table><thead><tr><th>Nome</th><th>Fração</th><th>Telefone</th></tr></thead><tbody>${linhas.slice(0, 8).map(l => `<tr><td>${esc(l.nome)}</td><td>${esc(l.fracao || '—')}</td><td>${esc(l.telefone || '—')}</td></tr>`).join('')}</tbody></table></div>${linhas.length > 8 ? `<span class="dim">… e mais ${linhas.length - 8}</span>` : ''}`;
+      document.getElementById('impGo').disabled = false;
+    } catch (ex) { err(ex.message || 'Não foi possível ler o ficheiro.'); }
+  });
+  document.getElementById('impGo').addEventListener('click', async e => {
+    e.target.disabled = true; e.target.textContent = 'A importar…'; err('');
+    try {
+      const j = await api('POST', '/api/admin/moradores/importar', {linhas});
+      await loadAll(); closeModal(); render();
+      toast(`${j.importados} morador${j.importados === 1 ? '' : 'es'} importado${j.importados === 1 ? '' : 's'}` + (j.ignorados.length ? ` · ${j.ignorados.length} ignorado${j.ignorados.length === 1 ? '' : 's'} (${j.ignorados.slice(0, 2).map(x => 'linha ' + x.linha + ': ' + x.motivo).join('; ')}${j.ignorados.length > 2 ? '…' : ''})` : ''));
+    } catch (ex) { err(errMsg(ex)); e.target.disabled = false; e.target.textContent = 'Importar'; }
   });
 }
 
 /* ---------- Global clicks ---------- */
 document.addEventListener('click', e => {
   if (e.target.closest('[data-stop]')) return;
-  const t = e.target.closest('[data-act],[data-edit],[data-pay],[data-go2],[data-cobrar],[data-plano],[data-perfil],[data-del],[data-acesso],[data-repor],[data-ativo],[data-delconta],[data-novoadmin],[data-senha],[data-sair],[data-confirmar],[data-rejeitar]'); if (!t) return;
+  const t = e.target.closest('[data-act],[data-edit],[data-pay],[data-go2],[data-cobrar],[data-plano],[data-perfil],[data-del],[data-acesso],[data-repor],[data-ativo],[data-delconta],[data-novoadmin],[data-senha],[data-sair],[data-confirmar],[data-rejeitar],[data-importar]'); if (!t) return;
+  if ('importar' in t.dataset) { importarMoradores(); return; }
   if (t.dataset.perfil) { perfilId = t.dataset.perfil; go('perfil'); return; }
   if (t.dataset.del) { openDeleteMorador(t.dataset.del); return; }
   if (t.dataset.acesso) { criarAcesso(t.dataset.acesso); return; }
@@ -744,9 +888,9 @@ document.addEventListener('click', e => {
   if ('sair' in t.dataset) { sair(); return; }
   if (t.dataset.confirmar) { confirmarCom(t.dataset.confirmar); return; }
   if (t.dataset.rejeitar) { rejeitarCom(t.dataset.rejeitar); return; }
-  if (t.dataset.act === 'novo') { const m = t.dataset.mid && moradorById(t.dataset.mid); openForm(t.dataset.col, null, m ? {moradorId:m.id, valor:m.quota} : null); }
+  if (t.dataset.act === 'novo') { const m = t.dataset.mid && moradorById(t.dataset.mid); openForm(t.dataset.col, null, m ? {moradorId:m.id, valor:quota()} : null); }
   else if (t.dataset.edit) { const [col, id] = t.dataset.edit.split(':'); const r = D[col].find(x => x.id === id); if (r) openForm(col, r); }
-  else if (t.dataset.pay) { const [mid, mes] = t.dataset.pay.split('|'); const m = moradorById(mid); openForm('pagamentos', null, {moradorId:mid, mes, valor:m ? m.quota : 0}); }
+  else if (t.dataset.pay) { const [mid, mes] = t.dataset.pay.split('|'); const ate = mesesPorPagar(mid, 600).filter(x => x <= mes).length || 1; openForm('pagamentos', null, {moradorId:mid, valor:ate * quota()}); }
   else if (t.dataset.go2) go(t.dataset.go2);
   else if (t.dataset.cobrar) cobranca(t.dataset.cobrar);
   else if (t.dataset.plano) mudarPlano(t.dataset.plano);

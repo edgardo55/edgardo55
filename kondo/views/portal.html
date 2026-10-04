@@ -182,6 +182,7 @@ function novaOcorrencia() {
     catch (err) { showErr(err); }
   });
 }
+const quotaMes = () => D.morador.quota || 10000;
 const pendentes = () => D.comunicacoes.filter(c => c.estado === 'Pendente').flatMap(c => c.meses);
 function comunicarPagamento() {
   const m = D.morador, pagos = new Set(D.pagamentos.map(p => p.mes)), pend = new Set(pendentes());
@@ -191,8 +192,9 @@ function comunicarPagamento() {
   const opcoes = [...new Set([...D.divida.meses, cur, prox])].filter(x => !pagos.has(x) && !pend.has(x) && (!m.desde || x >= m.desde)).sort();
   if (!opcoes.length) return toast('Não há meses por pagar para comunicar.');
   modal('Comunicar pagamento', `<form id="cpForm">
+    <p class="field full dim" style="margin:0;font-size:13px">Cada mês custa ${kz(quotaMes())}. Os meses são pagos por ordem: para pagar um mês tem de pagar também os anteriores.</p>
     <div class="field full"><label>Meses que pagou</label><div class="opts">${opcoes.map(x => `<label class="opt"><input type="checkbox" name="mes" value="${x}" ${D.divida.meses.includes(x) ? 'checked' : ''}> ${fmtMes(x)}</label>`).join('')}</div></div>
-    <div class="field"><label for="cpV">Valor pago (Kz)</label><input id="cpV" type="number" min="1" step="1" required></div>
+    <div class="field"><label for="cpV">Valor pago (Kz)</label><input id="cpV" type="number" min="1" step="1" required readonly></div>
     <div class="field"><label for="cpD">Data do pagamento</label><input id="cpD" type="date" required value="${new Date().toISOString().slice(0,10)}"></div>
     <div class="field"><label for="cpM">Método</label><select id="cpM">${['Multicaixa Express','Transferência BAI','Transferência BFA','Transferência BIC','Depósito BIC','Numerário','Outro'].map(x => `<option>${x}</option>`).join('')}</select></div>
     <div class="field"><label for="cpR">Referência da operação</label><input id="cpR" maxlength="60" placeholder="N.º do talão ou transação"></div>
@@ -200,8 +202,14 @@ function comunicarPagamento() {
     <p class="field full" id="mErr" style="color:var(--bad);margin:0" hidden></p>
     <footer><span></span><div><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit" id="cpGo">Enviar à administração</button></div></footer></form>`);
   const f = $('cpForm'), sel = () => [...f.querySelectorAll('input[name=mes]:checked')].map(i => i.value);
-  const upd = () => { $('cpV').value = sel().length * (+m.quota || 0) || ''; }; upd();
-  f.addEventListener('change', e => { if (e.target.name === 'mes') upd(); });
+  const upd = () => { $('cpV').value = sel().length * quotaMes() || ''; }; upd();
+  f.addEventListener('change', e => {
+    if (e.target.name !== 'mes') return;
+    // Ordem obrigatória: marcar um mês marca os anteriores; desmarcar um mês desmarca os seguintes.
+    const boxes = [...f.querySelectorAll('input[name=mes]')], i = boxes.indexOf(e.target);
+    boxes.forEach((b, j) => { if (e.target.checked ? j < i : j > i) b.checked = e.target.checked; });
+    upd();
+  });
   f.addEventListener('submit', async e => {
     e.preventDefault();
     const meses = sel(); if (!meses.length) return showErr(new Error('Escolha pelo menos um mês.'));

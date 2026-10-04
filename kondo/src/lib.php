@@ -222,18 +222,59 @@ function monthsBetween(string $a, string $b): array {
     }
     return $out;
 }
+// Quota mensal padrão: igual para todos os moradores; só os administradores a alteram (Definições).
+const QUOTA_PADRAO = 10000;
+function quotaPadrao(string $condo): int {
+    $cfg = getRec($condo, 'config', 'geral') ?: [];
+    $q = (int)round((float)num($cfg['quotaPadrao'] ?? 0));
+    return $q > 0 ? $q : QUOTA_PADRAO;
+}
+// Define a quota padrão e iguala a quota de todos os moradores (o valor de cada mês é sempre este).
+function definirQuota(string $condo, int $valor): void {
+    $cfg = getRec($condo, 'config', 'geral') ?: ['id' => 'geral'];
+    putRec($condo, 'config', array_merge($cfg, ['quotaPadrao' => $valor]));
+    foreach (lista($condo, 'moradores') as $m) if ((int)num($m['quota'] ?? 0) !== $valor) putRec($condo, 'moradores', array_merge($m, ['quota' => $valor]));
+}
+function somarMeses(string $mes, int $n): string {
+    [$y, $m] = array_map('intval', explode('-', $mes));
+    $t = $y * 12 + ($m - 1) + $n;
+    return sprintf('%d-%02d', intdiv($t, 12), $t % 12 + 1);
+}
+function inicioCobranca(string $condo, array $m): string {
+    $cfg = getRec($condo, 'config', 'geral') ?: [];
+    $inicio = str($cfg['inicio'] ?? ''); $desde = str($m['desde'] ?? '');
+    return ($desde !== '' && $desde > $inicio) ? $desde : ($inicio ?: curMonth());
+}
+// Os próximos $n meses por pagar, por ordem (do mais antigo): não se pode pagar um mês sem liquidar os anteriores.
+function mesesPorPagar(string $condo, array $m, array $pagamentos, int $n, array $extraPagos = []): array {
+    $pagos = array_flip($extraPagos);
+    foreach ($pagamentos as $p) if (($p['moradorId'] ?? null) === $m['id']) $pagos[$p['mes'] ?? ''] = true;
+    $out = []; $mes = inicioCobranca($condo, $m);
+    for ($i = 0; count($out) < $n && $i < 600; $i++, $mes = somarMeses($mes, 1)) if (!isset($pagos[$mes])) $out[] = $mes;
+    return $out;
+}
 function dividaDe(string $condo, array $m, array $pagamentos): array {
     $cfg = getRec($condo, 'config', 'geral') ?: [];
     if (!isAtivo($m)) return ['meses' => [], 'total' => 0];
-    $cur = curMonth(); $inicio = str($cfg['inicio'] ?? '');
+    $cur = curMonth();
     $venc = num($cfg['diaVencimento'] ?? 0) ?: 10;
     $vencido = (int)date('j') > $venc;
-    $desde = str($m['desde'] ?? '');
-    $start = ($desde !== '' && $desde > $inicio) ? $desde : ($inicio ?: $cur);
+    $start = inicioCobranca($condo, $m);
     $pagos = [];
     foreach ($pagamentos as $p) if (($p['moradorId'] ?? null) === $m['id']) $pagos[$p['mes'] ?? ''] = true;
-    $meses = array_values(array_filter(monthsBetween($start, $cur), fn($x) => !isset($pagos[$x]) && ($x < $cur || $vencido)));
-    return ['meses' => $meses, 'total' => count($meses) * num($m['quota'] ?? 0)];
+    $meses = [];
+    for ($x = $start; $x <= $cur; $x = somarMeses($x, 1)) if (!isset($pagos[$x]) && ($x < $cur || $vencido)) $meses[] = $x;
+    return ['meses' => $meses, 'total' => count($meses) * quotaPadrao($condo)];
+}
+// Cria um recibo por mês, começando no mais antigo em dívida. Devolve os pagamentos criados.
+function registarPagamento(string $condo, array $m, array $meses, array $dados): array {
+    $quota = quotaPadrao($condo); $nPag = count(lista($condo, 'pagamentos')); $out = [];
+    foreach ($meses as $i => $mes) {
+        $pg = ['id' => newId('p_'), 'moradorId' => $m['id'], 'mes' => $mes, 'valor' => $quota, 'metodo' => $dados['metodo'], 'data' => $dados['data'],
+            'referencia' => 'REC-' . (1001 + $nPag + $i), 'operacao' => $dados['operacao'] ?? '', 'comprovativoId' => $dados['comprovativoId'] ?? null];
+        putRec($condo, 'pagamentos', $pg); $out[] = $pg;
+    }
+    return $out;
 }
 
 function saveFile(string $condo, mixed $f): string {
