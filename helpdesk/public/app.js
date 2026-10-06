@@ -143,19 +143,19 @@ function barChart(map) {
   return Object.entries(map).map(([k, n]) => `<div class="bar-row"><span>${esc(k)}</span><div class="bar"><i style="width:${n / max * 100}%"></i></div><b>${n}</b></div>`).join('');
 }
 function dailyChart(days) {
-  const W = 560, H = 150, pad = 22, max = Math.max(1, ...days.flatMap(d => [d.opened, d.resolved])), bw = (W - pad) / days.length;
+  const W = Math.min(1200, Math.max(300, $('#content').clientWidth - 40)), H = 170, pad = 22, max = Math.max(1, ...days.flatMap(d => [d.opened, d.resolved])), bw = (W - pad) / days.length;
   let s = `<svg class="chart" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Chamados abertos e resolvidos nos últimos 14 dias">`;
   days.forEach((d, i) => {
     const x = pad + i * bw, h1 = d.opened / max * H, h2 = d.resolved / max * H;
     s += `<rect x="${x + 2}" y="${H - h1}" width="${bw / 2 - 3}" height="${h1}" rx="2" fill="var(--brand)"><title>${d.day}: ${d.opened} abertos</title></rect>`;
     s += `<rect x="${x + bw / 2}" y="${H - h2}" width="${bw / 2 - 3}" height="${h2}" rx="2" fill="var(--ok)"><title>${d.day}: ${d.resolved} resolvidos</title></rect>`;
-    if (i % 2 === 0) s += `<text x="${x + bw / 2}" y="${H + 15}" font-size="10" text-anchor="middle" fill="#66768a">${d.day}</text>`;
+    if (i % 3 === 0) s += `<text x="${x + bw / 2}" y="${H + 17}" font-size="12" text-anchor="middle" fill="#66768a">${d.day}</text>`;
   });
-  s += `<line x1="${pad}" x2="${W}" y1="${H}" y2="${H}" stroke="#e2e8f0"/><text x="0" y="10" font-size="10" fill="#66768a">${max}</text></svg>`;
+  s += `<line x1="${pad}" x2="${W}" y1="${H}" y2="${H}" stroke="#e2e8f0"/><text x="0" y="12" font-size="12" fill="#66768a">${max}</text></svg>`;
   return `<div class="legend"><span><i style="background:var(--brand)"></i>Abertos</span><span><i style="background:var(--ok)"></i>Resolvidos</span></div>${s}`;
 }
 function rows(items, withReq) {
-  return items.map(t => `<tr class="click" data-id="${t.id}"><td>#${t.id}</td><td class="title-cell">${esc(t.title)}</td>${withReq ? `<td>${esc(t.requester_name)}</td>` : ''}<td>${esc(t.category)}</td><td>${tag('p', t.priority)}</td><td>${tag('s', t.status)}</td>${isStaff() ? `<td>${esc(t.assignee_name || '—')}</td>` : ''}<td>${fmt(t.due)}<br>${slaBadge(t)}</td></tr>`).join('');
+  return items.map(t => `<tr class="click" data-id="${t.id}"><td data-l="#">#${t.id}</td><td class="title-cell" data-l="Assunto">${esc(t.title)}</td>${withReq ? `<td data-l="Solicitante">${esc(t.requester_name)}</td>` : ''}<td data-l="Categoria">${esc(t.category)}</td><td data-l="Prioridade">${tag('p', t.priority)}</td><td data-l="Status">${tag('s', t.status)}</td>${isStaff() ? `<td data-l="Técnico">${esc(t.assignee_name || '—')}</td>` : ''}<td data-l="Prazo (SLA)"><div class="due">${fmt(t.due)}<br>${slaBadge(t)}</div></td></tr>`).join('');
 }
 const bindRows = root => $$('tr[data-id]', root).forEach(r => r.onclick = () => location.hash = '#/ticket/' + r.dataset.id);
 const tableHead = withReq => `<thead><tr><th>#</th><th>Assunto</th>${withReq ? '<th>Solicitante</th>' : ''}<th>Categoria</th><th>Prioridade</th><th>Status</th>${isStaff() ? '<th>Técnico</th>' : ''}<th>Prazo (SLA)</th></tr></thead>`;
@@ -164,24 +164,24 @@ async function viewDashboard(tok) {
   const staff = isStaff();
   const [s, att] = await Promise.all([api('GET', '/api/stats'), api('GET', '/api/tickets?status=open&sort=' + (staff ? 'due&dir=asc' : 'created') + '&limit=6')]);
   if (stale(tok)) return;
-  const cards = staff ? `
+  const cards = staff ? `<div class="cards c4">
     <a class="stat" href="#/tickets" data-f="open"><b>${s.open}</b><span>Chamados em aberto</span></a>
     <a class="stat accent" href="#/tickets" data-f="none"><b>${s.unassigned}</b><span>Sem técnico</span></a>
     <a class="stat danger" href="#/tickets" data-f="overdue"><b>${s.overdue}</b><span>Atrasados (SLA)</span></a>
-    <div class="stat ok"><b>${s.resolved}</b><span>Resolvidos</span></div>
+    <div class="stat ok"><b>${s.resolved}</b><span>Resolvidos</span></div></div><div class="cards c3">
     <div class="stat"><b>${s.slaCompliance === null ? '—' : s.slaCompliance + '%'}</b><span>SLA cumprido</span></div>
     <div class="stat"><b>${s.avgResolutionH === null ? '—' : s.avgResolutionH + ' h'}</b><span>Tempo médio de resolução</span></div>
-    <div class="stat accent"><b>${s.avgRating === null ? '—' : '★ ' + s.avgRating}</b><span>Satisfação (${s.ratings} aval.)</span></div>` : `
+    <div class="stat accent"><b>${s.avgRating === null ? '—' : '★ ' + s.avgRating}</b><span>Satisfação (${s.ratings} aval.)</span></div></div>` : `<div class="cards c3">
     <a class="stat" href="#/tickets" data-f="open"><b>${s.open}</b><span>Meus chamados em aberto</span></a>
     <div class="stat ok"><b>${s.resolved}</b><span>Resolvidos</span></div>
-    <div class="stat accent"><b>${s.total}</b><span>Total de chamados</span></div>`;
+    <div class="stat accent"><b>${s.total}</b><span>Total de chamados</span></div></div>`;
   $('#content').innerHTML = `
-    <div class="cards">${cards}</div>
+    ${cards}
     ${staff ? `<div class="panel"><h3>Últimos 14 dias</h3>${dailyChart(s.daily)}</div>
     <div class="grid3"><div class="panel"><h3>Por status</h3>${barChart(s.byStatus)}</div><div class="panel"><h3>Por prioridade</h3>${barChart(s.byPriority)}</div><div class="panel"><h3>Por categoria</h3>${barChart(s.byCategory)}</div></div>
-    <div class="panel"><h3>Carga por técnico</h3><div class="table-wrap"><table><thead><tr><th>Técnico</th><th>Atribuídos</th><th>Resolvidos</th></tr></thead><tbody>${s.byTech.map(t => `<tr><td>${esc(t.name)}</td><td>${t.total}</td><td>${t.resolved || 0}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
+    <div class="panel"><h3>Carga por técnico</h3><div class="table-wrap"><table class="stack"><thead><tr><th>Técnico</th><th>Atribuídos</th><th>Resolvidos</th></tr></thead><tbody>${s.byTech.map(t => `<tr><td data-l="Técnico">${esc(t.name)}</td><td data-l="Atribuídos">${t.total}</td><td data-l="Resolvidos">${t.resolved || 0}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
     <div class="panel flush"><h3 style="padding:16px 18px 0">${staff ? 'Exigem atenção (ordenados por prazo)' : 'Meus chamados em aberto'}</h3>
-      ${att.items.length ? `<div class="table-wrap"><table>${tableHead(staff)}<tbody>${rows(att.items, staff)}</tbody></table></div>` : '<p class="empty">Nenhum chamado em aberto 🎉</p>'}</div>
+      ${att.items.length ? `<div class="table-wrap"><table class="stack">${tableHead(staff)}<tbody>${rows(att.items, staff)}</tbody></table></div>` : '<p class="empty">Nenhum chamado em aberto 🎉</p>'}</div>
     ${staff ? '' : '<div class="panel"><h3>Precisa de ajuda?</h3><p>Consulte a <a href="#/kb">base de conhecimento</a> ou <a href="#/new">abra um novo chamado</a>.</p></div>'}`;
   bindRows($('#content'));
   $$('a.stat[data-f]').forEach(a => a.onclick = () => {
@@ -198,22 +198,27 @@ async function viewTickets(tok) {
   if (stale(tok)) return;
   const techs = state.users.filter(u => u.role !== 'user');
   $('#content').innerHTML = `
-    <div class="toolbar">
+    <div class="filters" style="--n:${staff ? 4 : 3}">
       <select id="fStatus"><option value="">Todos os status</option><option value="open" ${L.status === 'open' ? 'selected' : ''}>Em aberto</option>${opts(STATUS, L.status)}</select>
-      <select id="fPrio"><option value="">Todas as prioridades</option>${opts(PRIO, L.priority)}</select>
-      <select id="fCat"><option value="">Todas as categorias</option>${opts(state.categories.map(c => c.name), L.category)}</select>
+      <select id="fPrio"><option value="">Prioridades</option>${opts(PRIO, L.priority)}</select>
+      <select id="fCat"><option value="">Categorias</option>${opts(state.categories.map(c => c.name), L.category)}</select>
       ${staff ? `<select id="fAssignee"><option value="">Todos os técnicos</option><option value="me" ${L.assignee === 'me' ? 'selected' : ''}>Atribuídos a mim</option><option value="none" ${L.assignee === 'none' ? 'selected' : ''}>Sem técnico</option>${techs.map(t => `<option value="${t.id}" ${String(t.id) === L.assignee ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select>` : ''}
-      <label class="inline" style="margin:0"><input type="checkbox" id="fOver" ${L.overdue ? 'checked' : ''}> Só atrasados</label>
-      <select id="fSort"><option value="created">Ordenar: abertura</option><option value="due" ${L.sort === 'due' ? 'selected' : ''}>Ordenar: prazo SLA</option><option value="priority" ${L.sort === 'priority' ? 'selected' : ''}>Ordenar: prioridade</option><option value="updated" ${L.sort === 'updated' ? 'selected' : ''}>Ordenar: atualização</option></select>
-      <button class="btn" id="fDir" title="Inverter ordem">${L.dir === 'desc' ? '↓' : '↑'}</button>
-      <span class="grow"></span>
-      ${staff ? '<button class="btn" id="exportBtn">⬇ Exportar CSV</button>' : ''}
-      <button class="btn" id="clearBtn">Limpar filtros</button>
-      <a class="btn accent" href="#/new" style="text-decoration:none">➕ Novo</a>
+    </div>
+    <div class="toolbar between">
+      <div class="grp">
+        <select id="fSort"><option value="created">Ordenar: abertura</option><option value="due" ${L.sort === 'due' ? 'selected' : ''}>Ordenar: prazo SLA</option><option value="priority" ${L.sort === 'priority' ? 'selected' : ''}>Ordenar: prioridade</option><option value="updated" ${L.sort === 'updated' ? 'selected' : ''}>Ordenar: atualização</option></select>
+        <button class="btn" id="fDir" title="Inverter ordem">${L.dir === 'desc' ? '↓ Recentes' : '↑ Antigos'}</button>
+        <label class="inline check"><input type="checkbox" id="fOver" ${L.overdue ? 'checked' : ''}> Só atrasados</label>
+      </div>
+      <div class="grp">
+        ${staff ? '<button class="btn" id="exportBtn">⬇ CSV</button>' : ''}
+        <button class="btn" id="clearBtn">Limpar</button>
+        <a class="btn accent" href="#/new" style="text-decoration:none">➕ Novo</a>
+      </div>
     </div>
     ${L.q ? `<p class="hint" style="margin-bottom:10px">Busca: “${esc(L.q)}”</p>` : ''}
     <div class="panel flush">
-      ${d.items.length ? `<div class="table-wrap"><table>${tableHead(staff)}<tbody>${rows(d.items, staff)}</tbody></table></div>` : '<p class="empty">Nenhum chamado encontrado.</p>'}
+      ${d.items.length ? `<div class="table-wrap"><table class="stack">${tableHead(staff)}<tbody>${rows(d.items, staff)}</tbody></table></div>` : '<p class="empty">Nenhum chamado encontrado.</p>'}
       <div class="pager"><span>${d.total} chamado(s)</span><div><button class="btn sm" id="prev" ${d.page <= 1 ? 'disabled' : ''}>‹ Anterior</button><span>Página ${d.page} de ${d.pages}</span><button class="btn sm" id="next" ${d.page >= d.pages ? 'disabled' : ''}>Próxima ›</button></div></div>
     </div>`;
   bindRows($('#content'));
@@ -346,8 +351,8 @@ async function viewUsers(tok) {
   const users = await api('GET', '/api/users'); state.users = users.filter(u => u.active);
   if (stale(tok)) return;
   $('#content').innerHTML = `<div class="toolbar"><span class="grow"></span><button class="btn accent" id="uNew">➕ Novo usuário</button></div>
-    <div class="panel flush"><div class="table-wrap"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Departamento</th><th>Perfil</th><th>Situação</th><th></th></tr></thead><tbody>
-    ${users.map(u => `<tr class="${u.active ? '' : 'off'}"><td><b>${esc(u.name)}</b></td><td>${esc(u.email)}</td><td>${esc(u.dept || '—')}</td><td><span class="tag role-${u.role}">${ROLE_LABEL[u.role]}</span></td><td>${u.active ? 'Ativo' : 'Inativo'}</td><td><button class="btn sm" data-edit="${u.id}">Editar</button></td></tr>`).join('')}</tbody></table></div></div>`;
+    <div class="panel flush"><div class="table-wrap"><table class="stack"><thead><tr><th>Nome</th><th>E-mail</th><th>Departamento</th><th>Perfil</th><th>Situação</th><th></th></tr></thead><tbody>
+    ${users.map(u => `<tr class="${u.active ? '' : 'off'}"><td data-l="Nome"><b>${esc(u.name)}</b></td><td data-l="E-mail">${esc(u.email)}</td><td data-l="Departamento">${esc(u.dept || '—')}</td><td data-l="Perfil"><span class="tag role-${u.role}">${ROLE_LABEL[u.role]}</span></td><td data-l="Situação">${u.active ? 'Ativo' : 'Inativo'}</td><td data-l=""><button class="btn sm" data-edit="${u.id}">Editar</button></td></tr>`).join('')}</tbody></table></div></div>`;
   const form = u => {
     const m = openModal(`<h2>${u ? 'Editar usuário' : 'Novo usuário'}</h2><form id="uForm">
       <label>Nome*<input name="name" required value="${esc(u?.name)}"></label>
